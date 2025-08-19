@@ -2,11 +2,25 @@
 
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
-export default function AuthError() {
+function ErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
+  return (
+    <div className="rounded-md bg-red-50 p-4">
+      <div className="text-sm text-red-700">
+        {error === 'Configuration' && 'There is a problem with the server configuration.'}
+        {error === 'AccessDenied' && 'Access was denied.'}
+        {error === 'Verification' && 'The verification token has expired or has already been used.'}
+        {!error && 'An unknown error occurred.'}
+      </div>
+    </div>
+  )
+}
+
+export default function AuthError() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -18,14 +32,13 @@ export default function AuthError() {
             There was a problem signing you in
           </p>
         </div>
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">
-            {error === 'Configuration' && 'There is a problem with the server configuration.'}
-            {error === 'AccessDenied' && 'Access was denied.'}
-            {error === 'Verification' && 'The verification token has expired or has already been used.'}
-            {!error && 'An unknown error occurred.'}
+        <Suspense fallback={
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="text-sm text-red-700">Loading error details...</div>
           </div>
-        </div>
+        }>
+          <ErrorContent />
+        </Suspense>
         <div className="text-center">
           <Link 
             href="/"
