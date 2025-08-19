@@ -1,13 +1,18 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 
+// Check if we have the required environment variables
+const hasRequiredEnvVars = process.env.GOOGLE_CLIENT_ID && 
+                          process.env.GOOGLE_CLIENT_SECRET && 
+                          process.env.NEXTAUTH_SECRET
+
 const handler = NextAuth({
-  providers: [
+  providers: hasRequiredEnvVars ? [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     })
-  ],
+  ] : [],
   callbacks: {
     async session({ session }) {
       return session
