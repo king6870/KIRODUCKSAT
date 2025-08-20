@@ -8,6 +8,7 @@ interface EnhancedCardProps {
   onClick?: () => void
   padding?: 'sm' | 'md' | 'lg'
   animation?: 'slide-in-up' | 'slide-in-right' | 'fade-in' | 'scale-in'
+  style?: React.CSSProperties
 }
 
 export default function EnhancedCard({
@@ -17,7 +18,8 @@ export default function EnhancedCard({
   selected = false,
   onClick,
   padding = 'md',
-  animation
+  animation,
+  style
 }: EnhancedCardProps) {
   const baseClasses = 'enhanced-card'
   const interactiveClass = interactive ? 'enhanced-card--interactive' : ''
@@ -45,6 +47,7 @@ export default function EnhancedCard({
     <CardComponent
       className={combinedClasses}
       onClick={onClick}
+      style={style}
     >
       {children}
     </CardComponent>

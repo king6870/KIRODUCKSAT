@@ -68,7 +68,7 @@ export default function ModuleTransition({
               Congratulations!
             </h1>
             <p className="text-lg text-gray-600">
-              You've completed all modules of the SAT practice test!
+              You&apos;ve completed all modules of the SAT practice test!
             </p>
           </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { ModuleResult, TestSession } from '@/types/test'
+import { TestSession } from '@/types/test'
 import EnhancedButton from '@/components/ui/EnhancedButton'
 import { useRouter } from 'next/navigation'
 
@@ -66,7 +66,7 @@ export default function TestResults({ testSession }: TestResultsProps) {
             SAT Practice Test Complete!
           </h1>
           <p className="text-lg text-gray-600">
-            Here's your comprehensive performance report
+            Here&apos;s your comprehensive performance report
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default function TestResults({ testSession }: TestResultsProps) {
         <div className="enhanced-card p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-6">Module-by-Module Performance</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {testSession.modules.map((module, index) => (
+            {testSession.modules.map((module) => (
               <div key={module.moduleId} className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
@@ -171,63 +171,68 @@ export default function TestResults({ testSession }: TestResultsProps) {
           </div>
         </div>
 
-        {/* Detailed Question Review */}
+        {/* Performance Summary */}
         <div className="enhanced-card p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-6">Question Review</h2>
+          <h2 className="text-2xl font-semibold mb-6">Performance Summary</h2>
           <div className="space-y-6">
             {testSession.modules.map((module) => (
-              <div key={module.moduleId}>
+              <div key={module.moduleId} className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4 flex items-center">
                   <span className="mr-2">{getModuleIcon(module.moduleType)}</span>
                   Module {module.moduleId} - {module.moduleType.replace('-', ' & ')}
                 </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {module.answers.map((answer, qIndex) => {
-                    const question = answer.question
-                    const isCorrect = answer.selectedAnswer === question.correctAnswer
-                    
-                    return (
-                      <div key={qIndex} className={`border rounded-lg p-4 ${
-                        isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-                      }`}>
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium">Question {qIndex + 1}</h4>
-                          <span className={`px-2 py-1 rounded text-sm font-medium ${
-                            isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {isCorrect ? 'Correct' : 'Incorrect'}
-                          </span>
-                        </div>
-                        
-                        <p className="mb-3 text-gray-700">{question.question}</p>
-                        
-                        <div className="space-y-1 mb-3">
-                          {question.options.map((option, optIndex) => (
-                            <div key={optIndex} className={`p-2 rounded text-sm ${
-                              optIndex === question.correctAnswer ? 'bg-green-100 text-green-800' :
-                              optIndex === answer.selectedAnswer && !isCorrect ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100'
-                            }`}>
-                              <span className="font-medium">
-                                {String.fromCharCode(65 + optIndex)}.
-                              </span> {option}
-                              {optIndex === question.correctAnswer && (
-                                <span className="ml-2 text-green-600">✓</span>
-                              )}
-                              {optIndex === answer.selectedAnswer && !isCorrect && (
-                                <span className="ml-2 text-red-600">✗</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="bg-blue-50 p-3 rounded">
-                          <p className="text-sm font-medium text-blue-800 mb-1">Explanation:</p>
-                          <p className="text-sm text-blue-700">{question.explanation}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {module.performance.questionsCorrect}
+                    </div>
+                    <div className="text-sm text-gray-600">Correct</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="text-2xl font-bold text-green-600">
+                      {module.score}%
+                    </div>
+                    <div className="text-sm text-gray-600">Score</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatTime(module.timeSpent)}
+                    </div>
+                    <div className="text-sm text-gray-600">Time Used</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {Math.round(module.performance.averageTimePerQuestion)}s
+                    </div>
+                    <div className="text-sm text-gray-600">Avg/Question</div>
+                  </div>
+                </div>
+
+                {/* Strengths and Weaknesses */}
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h4 className="font-medium text-green-800 mb-2">Strong Areas</h4>
+                    <ul className="text-sm text-green-700 space-y-1">
+                      {module.performance.strongAreas.map((area, areaIndex) => (
+                        <li key={areaIndex} className="flex items-center">
+                          <span className="text-green-500 mr-2">✓</span>
+                          {area}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-4">
+                    <h4 className="font-medium text-orange-800 mb-2">Areas to Improve</h4>
+                    <ul className="text-sm text-orange-700 space-y-1">
+                      {module.performance.weakAreas.map((area, areaIndex) => (
+                        <li key={areaIndex} className="flex items-center">
+                          <span className="text-orange-500 mr-2">→</span>
+                          {area}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </div>
             ))}

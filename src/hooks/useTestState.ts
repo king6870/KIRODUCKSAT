@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { TestState, Question } from '@/types/test'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { TestState, Question, ModulePerformance } from '@/types/test'
 import { TestStateManager } from '@/utils/TestStateManager'
 import { QuestionManager } from '@/utils/QuestionManager'
 
@@ -8,7 +8,7 @@ export function useTestState(userId: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const questionManager = new QuestionManager()
+  const questionManager = useMemo(() => new QuestionManager(), [])
 
   // Initialize or load test state
   useEffect(() => {
@@ -32,7 +32,7 @@ export function useTestState(userId: string) {
   }, [userId])
 
   // Start module with questions
-  const startModule = useCallback((moduleId: number, previousPerformance?: any) => {
+  const startModule = useCallback((moduleId: number, previousPerformance?: ModulePerformance) => {
     if (!testState) return
 
     try {

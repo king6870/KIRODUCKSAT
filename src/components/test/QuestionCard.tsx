@@ -237,7 +237,7 @@ export default function QuestionCard({
           <div className="flex items-center gap-2 text-yellow-800">
             <span>⏰</span>
             <span className="text-sm">
-              You've spent more time than recommended on this question. Consider moving on.
+              You&apos;ve spent more time than recommended on this question. Consider moving on.
             </span>
           </div>
         </div>

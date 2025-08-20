@@ -1,43 +1,14 @@
 "use client"
 
 import { useState } from 'react'
-import { ModuleConfig } from '@/types/test'
+import { MODULE_CONFIGS } from '@/data/moduleConfigs'
 import EnhancedButton from '@/components/ui/EnhancedButton'
 
 interface TestLauncherProps {
   onStartTest: () => void
 }
 
-const MODULE_CONFIGS: ModuleConfig[] = [
-  {
-    id: 1,
-    type: 'reading-writing',
-    duration: 32,
-    questionCount: 27,
-    title: 'Reading and Writing - Module 1'
-  },
-  {
-    id: 2,
-    type: 'reading-writing', 
-    duration: 32,
-    questionCount: 27,
-    title: 'Reading and Writing - Module 2'
-  },
-  {
-    id: 3,
-    type: 'math',
-    duration: 35,
-    questionCount: 22,
-    title: 'Math - Module 1'
-  },
-  {
-    id: 4,
-    type: 'math',
-    duration: 35,
-    questionCount: 22,
-    title: 'Math - Module 2'
-  }
-]
+
 
 export default function TestLauncher({ onStartTest }: TestLauncherProps) {
   const [showInstructions, setShowInstructions] = useState(false)
@@ -96,7 +67,7 @@ export default function TestLauncher({ onStartTest }: TestLauncherProps) {
           {/* Module Breakdown */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-center mb-4">Module Breakdown</h3>
-            {MODULE_CONFIGS.map((module, index) => (
+            {MODULE_CONFIGS.map((module) => (
               <div key={module.id} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">{getModuleIcon(module.type)}</span>
@@ -146,7 +117,7 @@ export default function TestLauncher({ onStartTest }: TestLauncherProps) {
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li>Reading & Writing modules: 32 minutes each</li>
                   <li>Math modules: 35 minutes each</li>
-                  <li>You'll receive warnings at 5 minutes and 1 minute remaining</li>
+                  <li>You&apos;ll receive warnings at 5 minutes and 1 minute remaining</li>
                   <li>Take breaks between modules to stay fresh</li>
                 </ul>
               </div>
@@ -155,7 +126,7 @@ export default function TestLauncher({ onStartTest }: TestLauncherProps) {
                 <h3 className="font-semibold mb-2">🎯 Tips for Success</h3>
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li>Read questions carefully and eliminate obviously wrong answers</li>
-                  <li>Manage your time - don't spend too long on any single question</li>
+                  <li>Manage your time - don&apos;t spend too long on any single question</li>
                   <li>Use the process of elimination for multiple choice questions</li>
                   <li>Review your answers if time permits</li>
                   <li>Stay calm and focused throughout the test</li>
@@ -183,7 +154,7 @@ export default function TestLauncher({ onStartTest }: TestLauncherProps) {
             </div>
             <div className="flex items-center">
               <input type="checkbox" className="mr-3 h-4 w-4 text-blue-600" />
-              <span className="text-gray-700">I'm ready to focus and do my best</span>
+              <span className="text-gray-700">I&apos;m ready to focus and do my best</span>
             </div>
           </div>
         </div>
