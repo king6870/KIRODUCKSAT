@@ -1,9 +1,12 @@
 "use client"
 
 import { useSession, signIn, signOut } from "next-auth/react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function Home() {
   const { data: session, status } = useSession()
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -16,22 +19,22 @@ export default function Home() {
             </div>
             <div className="flex items-center space-x-4">
               <nav className="hidden md:flex space-x-8">
-                <a href="/" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                <Link href="/" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                   Home
-                </a>
+                </Link>
                 {session && (
                   <>
-                    <a href="/practice-test" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                    <Link href="/practice-test" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                       Practice Test
-                    </a>
-                    <a href="/progress" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                    </Link>
+                    <Link href="/progress" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                       Progress
-                    </a>
+                    </Link>
                   </>
                 )}
-                <a href="#" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                <button className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                   About
-                </a>
+                </button>
               </nav>
 
               {status === "loading" ? (
@@ -77,13 +80,13 @@ export default function Home() {
               </p>
               <div className="flex justify-center space-x-4">
                 <button 
-                  onClick={() => window.location.href = '/practice-test'}
+                  onClick={() => router.push('/practice-test')}
                   className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
                 >
                   Start Practice Test
                 </button>
                 <button 
-                  onClick={() => window.location.href = '/progress'}
+                  onClick={() => router.push('/progress')}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
                 >
                   View Progress

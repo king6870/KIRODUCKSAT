@@ -207,7 +207,7 @@ export default function PracticeTest() {
                 Return Home
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => router.refresh()}
                 className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium"
               >
                 Take Another Test
