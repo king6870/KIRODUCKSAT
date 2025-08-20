@@ -16,14 +16,21 @@ export default function Home() {
             </div>
             <div className="flex items-center space-x-4">
               <nav className="hidden md:flex space-x-8">
-                <a href="#" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                <a href="/" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                   Home
                 </a>
+                {session && (
+                  <>
+                    <a href="/practice-test" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                      Practice Test
+                    </a>
+                    <a href="/progress" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                      Progress
+                    </a>
+                  </>
+                )}
                 <a href="#" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                   About
-                </a>
-                <a href="#" className="text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                  Contact
                 </a>
               </nav>
 
@@ -69,10 +76,16 @@ export default function Home() {
                 Hello {session.user?.name}! Ready to start your SAT preparation journey?
               </p>
               <div className="flex justify-center space-x-4">
-                <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                <button 
+                  onClick={() => window.location.href = '/practice-test'}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
                   Start Practice Test
                 </button>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                <button 
+                  onClick={() => window.location.href = '/progress'}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
                   View Progress
                 </button>
               </div>
