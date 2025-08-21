@@ -50,7 +50,7 @@ export default function PracticeTest() {
   }
 
   // Module start screen (before starting each module)
-  if (currentModule && !testState.moduleStarted) {
+  if (currentModule && hasStarted && currentQuestionIndex === 0 && !isTransitioning) {
     return (
       <ModuleStart
         module={currentModule}
@@ -82,7 +82,7 @@ export default function PracticeTest() {
   }
 
   // Main test interface
-  if (currentModule && currentQuestion && testState.moduleStarted) {
+  if (currentModule && currentQuestion && hasStarted && !isTransitioning && !isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
         <ModuleHeader
