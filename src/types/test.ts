@@ -64,15 +64,23 @@ export interface TestSession {
 export interface TestState {
   currentModule: number // 1-4
   currentQuestion: number
+  currentQuestionIndex: number
   moduleType: 'reading-writing' | 'math'
   questions: Question[][]
   answers: Answer[][]
+  currentAnswers: Answer[]
   timeRemaining: number
   moduleStartTime: Date
   testStartTime: Date
   isTransitioning: boolean
   completedModules: number[]
   session: TestSession
+  moduleStarted: boolean
+  progress: number
+  questionsAnswered: number
+  lastModulePerformance: ModulePerformance | null
+  modules: ModuleConfig[]
+  testSession: TestSession | null
 }
 
 export interface QuestionPool {
