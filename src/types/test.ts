@@ -26,6 +26,8 @@ export interface ModuleConfig {
   questionCount: number
   title: string
   description: string
+  icon?: string
+  color?: string
 }
 
 export interface ModulePerformance {
