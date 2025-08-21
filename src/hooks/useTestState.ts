@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { TestState, Question, ModulePerformance, ModuleConfig } from '@/types/test'
+import { TestState } from '@/types/test'
 import { MODULE_CONFIGS } from '@/data/moduleConfigs'
 import { QUESTION_POOLS } from '@/data/questionPools'
 
 export function useTestState(userId: string) {
-  const [testState, setTestState] = useState<TestState | null>(null)
+  const [testState] = useState<TestState | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -51,7 +51,7 @@ export function useTestState(userId: string) {
   }, [])
 
   // Select answer
-  const selectAnswer = useCallback((answer: number) => {
+  const selectAnswer = useCallback((_answer: number) => {
     // Store selected answer
   }, [])
 
