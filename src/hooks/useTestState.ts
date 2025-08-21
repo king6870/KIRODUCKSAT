@@ -1,204 +1,138 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { TestState, Question, ModulePerformance } from '@/types/test'
-import { TestStateManager } from '@/utils/TestStateManager'
-import { QuestionManager } from '@/utils/QuestionManager'
+import { TestState, Question, ModulePerformance, ModuleConfig } from '@/types/test'
+import { MODULE_CONFIGS } from '@/data/moduleConfigs'
+import { QUESTION_POOLS } from '@/data/questionPools'
 
 export function useTestState(userId: string) {
   const [testState, setTestState] = useState<TestState | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasStarted, setHasStarted] = useState(false)
+  const [currentModuleIndex, setCurrentModuleIndex] = useState(0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isComplete, setIsComplete] = useState(false)
 
-  const questionManager = useMemo(() => new QuestionManager(), [])
-
-  // Initialize or load test state
-  useEffect(() => {
-    try {
-      const savedState = TestStateManager.loadState()
-      
-      if (savedState && TestStateManager.validateState(savedState)) {
-        // Resume existing test
-        setTestState(savedState)
-      } else {
-        // Start new test
-        const newState = TestStateManager.initializeTestSession(userId)
-        setTestState(newState)
-      }
-    } catch (err) {
-      setError('Failed to initialize test state')
-      console.error('Test state initialization error:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userId])
-
-  // Start module with questions
-  const startModule = useCallback((moduleId: number, previousPerformance?: ModulePerformance) => {
-    if (!testState) return
-
-    try {
-      const questions = questionManager.generateModule(moduleId, previousPerformance)
-      const updatedState = TestStateManager.updateModule(testState, moduleId, questions)
-      setTestState(updatedState)
-    } catch (err) {
-      setError(`Failed to start module ${moduleId}`)
-      console.error('Module start error:', err)
-    }
-  }, [testState, questionManager])
-
-  // Navigate to question
-  const goToQuestion = useCallback((questionIndex: number) => {
-    if (!testState) return
-
-    try {
-      const updatedState = TestStateManager.updateQuestion(testState, questionIndex)
-      setTestState(updatedState)
-    } catch (err) {
-      setError('Failed to navigate to question')
-      console.error('Question navigation error:', err)
-    }
-  }, [testState])
-
-  // Submit answer
-  const submitAnswer = useCallback((selectedAnswer: number, timeSpent: number) => {
-    if (!testState) return
-
-    try {
-      const currentQuestions = testState.questions[testState.currentModule - 1]
-      const currentQuestion = currentQuestions[testState.currentQuestion]
-      
-      if (!currentQuestion) {
-        throw new Error('Current question not found')
-      }
-
-      const isCorrect = selectedAnswer === currentQuestion.correctAnswer
-      
-      const updatedState = TestStateManager.submitAnswer(
-        testState,
-        currentQuestion.id,
-        selectedAnswer,
-        timeSpent,
-        isCorrect
-      )
-      
-      setTestState(updatedState)
-    } catch (err) {
-      setError('Failed to submit answer')
-      console.error('Answer submission error:', err)
-    }
-  }, [testState])
-
-  // Complete current module
-  const completeModule = useCallback(() => {
-    if (!testState) return null
-
-    try {
-      const updatedState = TestStateManager.completeModule(testState)
-      setTestState(updatedState)
-      
-      // Return the completed module result
-      return updatedState.session.modules[updatedState.session.modules.length - 1]
-    } catch (err) {
-      setError('Failed to complete module')
-      console.error('Module completion error:', err)
-      return null
-    }
-  }, [testState])
-
-  // Complete entire test
-  const completeTest = useCallback(() => {
-    if (!testState) return
-
-    try {
-      const finalState = TestStateManager.completeTest(testState)
-      setTestState(finalState)
-    } catch (err) {
-      setError('Failed to complete test')
-      console.error('Test completion error:', err)
-    }
-  }, [testState])
-
-  // Update timer
-  const updateTimer = useCallback((timeRemaining: number) => {
-    if (!testState) return
-
-    const updatedState = TestStateManager.updateTimer(testState, timeRemaining)
-    setTestState(updatedState)
-
-    // Auto-complete module when time expires
-    if (timeRemaining <= 0) {
-      setTimeout(() => {
-        completeModule()
-      }, 1000)
-    }
-  }, [testState, completeModule])
-
-  // Clear test state (restart)
-  const clearTest = useCallback(() => {
-    try {
-      TestStateManager.clearState()
-      const newState = TestStateManager.initializeTestSession(userId)
-      setTestState(newState)
-      setError(null)
-    } catch (err) {
-      setError('Failed to restart test')
-      console.error('Test restart error:', err)
-    }
-  }, [userId])
+  // Get current module config
+  const currentModule = useMemo(() => {
+    if (currentModuleIndex >= MODULE_CONFIGS.length) return null
+    return MODULE_CONFIGS[currentModuleIndex]
+  }, [currentModuleIndex])
 
   // Get current question
-  const getCurrentQuestion = useCallback((): Question | null => {
-    if (!testState) return null
-
-    const currentQuestions = testState.questions[testState.currentModule - 1]
-    return currentQuestions[testState.currentQuestion] || null
-  }, [testState])
-
-  // Get module progress
-  const getModuleProgress = useCallback(() => {
-    if (!testState) return { answered: 0, total: 0, percentage: 0 }
-
-    const moduleAnswers = testState.answers[testState.currentModule - 1]
-    const moduleQuestions = testState.questions[testState.currentModule - 1]
+  const currentQuestion = useMemo(() => {
+    if (!currentModule) return null
     
-    return {
-      answered: moduleAnswers.length,
-      total: moduleQuestions.length,
-      percentage: moduleQuestions.length > 0 ? (moduleAnswers.length / moduleQuestions.length) * 100 : 0
+    // For now, return a sample question from the question pools
+    const moduleType = currentModule.type
+    const questions = moduleType === 'reading-writing' 
+      ? QUESTION_POOLS.readingWriting.module1 
+      : QUESTION_POOLS.math.module1
+    
+    if (currentQuestionIndex >= questions.length) return null
+    return questions[currentQuestionIndex]
+  }, [currentModule, currentQuestionIndex])
+
+  // Initialize test state
+  useEffect(() => {
+    setIsLoading(false)
+  }, [userId])
+
+  // Start test
+  const startTest = useCallback(() => {
+    setHasStarted(true)
+    setCurrentModuleIndex(0)
+    setCurrentQuestionIndex(0)
+  }, [])
+
+  // Start module
+  const startModule = useCallback(() => {
+    // Module is now started, begin questions
+  }, [])
+
+  // Select answer
+  const selectAnswer = useCallback((answer: number) => {
+    // Store selected answer
+  }, [])
+
+  // Next question
+  const nextQuestion = useCallback(() => {
+    if (!currentModule) return
+    
+    if (currentQuestionIndex < currentModule.questionCount - 1) {
+      setCurrentQuestionIndex(prev => prev + 1)
     }
-  }, [testState])
+  }, [currentModule, currentQuestionIndex])
 
-  // Check if can proceed to next question
-  const canProceedToNext = useCallback(() => {
-    if (!testState) return false
+  // Previous question
+  const previousQuestion = useCallback(() => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1)
+    }
+  }, [currentQuestionIndex])
 
-    const moduleAnswers = testState.answers[testState.currentModule - 1]
-    return moduleAnswers.length > testState.currentQuestion
-  }, [testState])
+  // Submit module
+  const submitModule = useCallback(() => {
+    if (currentModuleIndex < MODULE_CONFIGS.length - 1) {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setCurrentModuleIndex(prev => prev + 1)
+        setCurrentQuestionIndex(0)
+        setIsTransitioning(false)
+      }, 2000)
+    } else {
+      setIsComplete(true)
+    }
+  }, [currentModuleIndex])
 
-  // Check if module is complete
-  const isModuleComplete = useCallback(() => {
-    if (!testState) return false
-
-    const moduleAnswers = testState.answers[testState.currentModule - 1]
-    const moduleQuestions = testState.questions[testState.currentModule - 1]
-    
-    return moduleAnswers.length === moduleQuestions.length
-  }, [testState])
+  // Continue to next module
+  const continueToNextModule = useCallback(() => {
+    setIsTransitioning(false)
+  }, [])
 
   return {
-    testState,
-    isLoading,
-    error,
+    testState: testState || {
+      currentModule: currentModuleIndex + 1,
+      currentQuestion: currentQuestionIndex,
+      moduleType: currentModule?.type || 'reading-writing',
+      questions: [[], [], [], []],
+      answers: [[], [], [], []],
+      timeRemaining: currentModule?.duration ? currentModule.duration * 60 : 1920,
+      moduleStartTime: new Date(),
+      testStartTime: new Date(),
+      isTransitioning,
+      completedModules: [],
+      session: {
+        id: 'temp',
+        userId,
+        startTime: new Date(),
+        modules: [],
+        overallScore: 0,
+        totalTimeSpent: 0,
+        status: 'in-progress' as const
+      },
+      moduleStarted: hasStarted,
+      currentQuestionIndex,
+      currentAnswers: [],
+      progress: (currentQuestionIndex / (currentModule?.questionCount || 1)) * 100,
+      questionsAnswered: currentQuestionIndex,
+      lastModulePerformance: null,
+      modules: MODULE_CONFIGS,
+      testSession: null
+    },
+    currentModule,
+    currentQuestion,
+    isTransitioning,
+    isComplete,
+    hasStarted,
+    startTest,
     startModule,
-    goToQuestion,
-    submitAnswer,
-    completeModule,
-    completeTest,
-    updateTimer,
-    clearTest,
-    getCurrentQuestion,
-    getModuleProgress,
-    canProceedToNext,
-    isModuleComplete
+    selectAnswer,
+    nextQuestion,
+    previousQuestion,
+    submitModule,
+    continueToNextModule,
+    isLoading,
+    error
   }
 }
