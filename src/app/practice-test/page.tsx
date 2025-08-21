@@ -31,6 +31,18 @@ export default function PracticeTest() {
     }
   }, [session, router])
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Test State Debug:', {
+      hasStarted,
+      moduleStarted: testState.moduleStarted,
+      currentModule: currentModule?.id,
+      currentQuestion: currentQuestion?.id,
+      isTransitioning,
+      isComplete
+    })
+  }, [hasStarted, testState.moduleStarted, currentModule, currentQuestion, isTransitioning, isComplete])
+
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -49,7 +61,7 @@ export default function PracticeTest() {
   }
 
   // Module start screen (before starting each module)
-  if (currentModule && hasStarted && testState.currentQuestionIndex === 0 && !isTransitioning) {
+  if (currentModule && hasStarted && !testState.moduleStarted && !isTransitioning) {
     return (
       <ModuleStart
         module={currentModule}
@@ -80,7 +92,7 @@ export default function PracticeTest() {
   }
 
   // Main test interface
-  if (currentModule && currentQuestion && hasStarted && !isTransitioning && !isComplete) {
+  if (currentModule && currentQuestion && hasStarted && testState.moduleStarted && !isTransitioning && !isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
         {/* Header */}

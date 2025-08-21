@@ -12,6 +12,7 @@ export function useTestState(userId: string) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [moduleStarted, setModuleStarted] = useState(false)
 
   // Get current module config
   const currentModule = useMemo(() => {
@@ -43,11 +44,12 @@ export function useTestState(userId: string) {
     setHasStarted(true)
     setCurrentModuleIndex(0)
     setCurrentQuestionIndex(0)
+    setModuleStarted(false) // Show module start screen
   }, [])
 
   // Start module
   const startModule = useCallback(() => {
-    // Module is now started, begin questions
+    setModuleStarted(true) // Now actually start the module
   }, [])
 
   // Select answer
@@ -79,6 +81,7 @@ export function useTestState(userId: string) {
       setTimeout(() => {
         setCurrentModuleIndex(prev => prev + 1)
         setCurrentQuestionIndex(0)
+        setModuleStarted(false) // Show next module start screen
         setIsTransitioning(false)
       }, 2000)
     } else {
@@ -95,9 +98,11 @@ export function useTestState(userId: string) {
     testState: testState || {
       currentModule: currentModuleIndex + 1,
       currentQuestion: currentQuestionIndex,
+      currentQuestionIndex,
       moduleType: currentModule?.type || 'reading-writing',
       questions: [[], [], [], []],
       answers: [[], [], [], []],
+      currentAnswers: [],
       timeRemaining: currentModule?.duration ? currentModule.duration * 60 : 1920,
       moduleStartTime: new Date(),
       testStartTime: new Date(),
@@ -112,9 +117,7 @@ export function useTestState(userId: string) {
         totalTimeSpent: 0,
         status: 'in-progress' as const
       },
-      moduleStarted: hasStarted,
-      currentQuestionIndex,
-      currentAnswers: [],
+      moduleStarted,
       progress: (currentQuestionIndex / (currentModule?.questionCount || 1)) * 100,
       questionsAnswered: currentQuestionIndex,
       lastModulePerformance: null,
