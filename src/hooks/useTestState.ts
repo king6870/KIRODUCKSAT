@@ -51,6 +51,7 @@ export function useTestState(userId: string) {
   }, [])
 
   // Select answer
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const selectAnswer = useCallback((_answer: number) => {
     // Store selected answer
   }, [])
