@@ -54,33 +54,6 @@ export function useTestState(userId: string) {
       : QUESTION_POOLS.math.module1
   }, [currentModule])
 
-  // Timer effect - starts when module is started
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    
-    if (moduleStarted && timeRemaining > 0 && !isComplete && !isTransitioning) {
-      interval = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            // Time's up - auto submit module
-            handleModuleSubmit()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }
-
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [moduleStarted, timeRemaining, isComplete, isTransitioning, handleModuleSubmit])
-
-  // Initialize test state
-  useEffect(() => {
-    setIsLoading(false)
-  }, [userId])
-
   // Calculate module results
   const calculateModuleResults = useCallback(() => {
     const results: QuestionResult[] = []
@@ -110,9 +83,9 @@ export function useTestState(userId: string) {
   // Handle module submission
   const handleModuleSubmit = useCallback(() => {
     const moduleEndTime = new Date()
-    const moduleTimeSpent = moduleStartTime 
-      ? Math.floor((moduleEndTime.getTime() - moduleStartTime.getTime()) / 1000)
-      : 0
+    // const moduleTimeSpent = moduleStartTime 
+    //   ? Math.floor((moduleEndTime.getTime() - moduleStartTime.getTime()) / 1000)
+    //   : 0
 
     // Calculate results for current module
     const results = calculateModuleResults()
@@ -175,7 +148,34 @@ export function useTestState(userId: string) {
       setTestResults(finalResults)
       setIsComplete(true)
     }
-  }, [currentModuleIndex, calculateModuleResults, moduleResults, moduleStartTime, testStartTime, userId])
+  }, [currentModuleIndex, calculateModuleResults, moduleResults, testStartTime, userId])
+
+  // Timer effect - starts when module is started
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
+    if (moduleStarted && timeRemaining > 0 && !isComplete && !isTransitioning) {
+      interval = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            // Time's up - auto submit module
+            handleModuleSubmit()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [moduleStarted, timeRemaining, isComplete, isTransitioning, handleModuleSubmit])
+
+  // Initialize test state
+  useEffect(() => {
+    setIsLoading(false)
+  }, [userId])
 
   // Start test
   const startTest = useCallback(() => {

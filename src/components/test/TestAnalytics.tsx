@@ -222,7 +222,7 @@ export default function TestAnalytics({ testResults }: TestAnalyticsProps) {
               ❌ Questions to Review ({incorrectQuestions.length})
             </h2>
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {incorrectQuestions.slice(0, 10).map((question, index) => (
+              {incorrectQuestions.slice(0, 10).map((question) => (
                 <div key={question.questionId} className="p-4 bg-red-50 border border-red-200 rounded-2xl">
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-medium text-gray-900">
