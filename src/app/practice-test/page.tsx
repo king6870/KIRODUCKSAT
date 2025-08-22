@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTestState } from '@/hooks/useTestState'
 import TestLauncher from '@/components/test/TestLauncher'
+import TestAnalytics from '@/components/test/TestAnalytics'
 import ModuleStart from '@/components/test/ModuleStart'
 
 export default function PracticeTest() {
@@ -14,6 +15,7 @@ export default function PracticeTest() {
     currentModule,
     currentQuestion,
     currentSelectedAnswer,
+    testResults,
     isTransitioning,
     isComplete,
     hasStarted,
@@ -71,7 +73,12 @@ export default function PracticeTest() {
     )
   }
 
-  // Final results screen
+  // Final results screen with analytics
+  if (isComplete && testResults) {
+    return <TestAnalytics testResults={testResults} />
+  }
+
+  // Fallback completion screen (if no results)
   if (isComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
@@ -82,10 +89,10 @@ export default function PracticeTest() {
             Congratulations on completing your SAT practice test!
           </p>
           <button
-            onClick={() => router.push('/progress')}
+            onClick={() => router.push('/practice-test')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:shadow-lg transition-all"
           >
-            View Results
+            Take Another Test
           </button>
         </div>
       </div>

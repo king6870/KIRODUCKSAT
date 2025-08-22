@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { TestState } from '@/types/test'
+import { TestState, TestResult, QuestionResult } from '@/types/test'
 import { MODULE_CONFIGS } from '@/data/moduleConfigs'
 import { QUESTION_POOLS } from '@/data/questionPools'
 
@@ -18,6 +18,11 @@ export function useTestState(userId: string) {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([])
   const [moduleStartTime, setModuleStartTime] = useState<Date | null>(null)
+  const [testStartTime, setTestStartTime] = useState<Date | null>(null)
+  
+  // Test results tracking
+  const [testResults, setTestResults] = useState<TestResult | null>(null)
+  const [moduleResults, setModuleResults] = useState<QuestionResult[][]>([])
 
   // Get current module config
   const currentModule = useMemo(() => {
@@ -39,6 +44,16 @@ export function useTestState(userId: string) {
     return questions[currentQuestionIndex]
   }, [currentModule, currentQuestionIndex])
 
+  // Get all questions for current module
+  const currentModuleQuestions = useMemo(() => {
+    if (!currentModule) return []
+    
+    const moduleType = currentModule.type
+    return moduleType === 'reading-writing' 
+      ? QUESTION_POOLS.readingWriting.module1 
+      : QUESTION_POOLS.math.module1
+  }, [currentModule])
+
   // Timer effect - starts when module is started
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -48,18 +63,7 @@ export function useTestState(userId: string) {
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // Time's up - auto submit module
-            setIsTransitioning(true)
-            setTimeout(() => {
-              if (currentModuleIndex < MODULE_CONFIGS.length - 1) {
-                setCurrentModuleIndex(prev => prev + 1)
-                setCurrentQuestionIndex(0)
-                setModuleStarted(false)
-                setSelectedAnswers([])
-                setIsTransitioning(false)
-              } else {
-                setIsComplete(true)
-              }
-            }, 2000)
+            handleModuleSubmit()
             return 0
           }
           return prev - 1
@@ -70,32 +74,131 @@ export function useTestState(userId: string) {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [moduleStarted, timeRemaining, isComplete, isTransitioning, currentModuleIndex])
+  }, [moduleStarted, timeRemaining, isComplete, isTransitioning, handleModuleSubmit])
 
   // Initialize test state
   useEffect(() => {
     setIsLoading(false)
   }, [userId])
 
+  // Calculate module results
+  const calculateModuleResults = useCallback(() => {
+    const results: QuestionResult[] = []
+    
+    currentModuleQuestions.forEach((question, index) => {
+      const userAnswer = selectedAnswers[index]
+      const isCorrect = userAnswer === question.correctAnswer
+      const timeSpent = question.timeEstimate // Approximate for now
+      
+      results.push({
+        questionId: question.id,
+        question: question.question,
+        category: question.category,
+        difficulty: question.difficulty,
+        userAnswer,
+        correctAnswer: question.correctAnswer,
+        isCorrect,
+        timeSpent,
+        options: question.options,
+        explanation: question.explanation
+      })
+    })
+    
+    return results
+  }, [currentModuleQuestions, selectedAnswers])
+
+  // Handle module submission
+  const handleModuleSubmit = useCallback(() => {
+    const moduleEndTime = new Date()
+    const moduleTimeSpent = moduleStartTime 
+      ? Math.floor((moduleEndTime.getTime() - moduleStartTime.getTime()) / 1000)
+      : 0
+
+    // Calculate results for current module
+    const results = calculateModuleResults()
+    
+    // Update module results
+    setModuleResults(prev => {
+      const newResults = [...prev]
+      newResults[currentModuleIndex] = results
+      return newResults
+    })
+
+    if (currentModuleIndex < MODULE_CONFIGS.length - 1) {
+      // Move to next module
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setCurrentModuleIndex(prev => prev + 1)
+        setCurrentQuestionIndex(0)
+        setModuleStarted(false)
+        setSelectedAnswers([])
+        setIsTransitioning(false)
+      }, 2000)
+    } else {
+      // Test complete - calculate final results
+      const allResults = [...moduleResults]
+      allResults[currentModuleIndex] = results
+      
+      const flatResults = allResults.flat()
+      const totalQuestions = flatResults.length
+      const correctAnswers = flatResults.filter(r => r.isCorrect).length
+      const totalTimeSpent = testStartTime 
+        ? Math.floor((new Date().getTime() - testStartTime.getTime()) / 1000)
+        : 0
+
+      // Calculate category performance
+      const categoryStats: Record<string, { correct: number; total: number }> = {}
+      flatResults.forEach(result => {
+        if (!categoryStats[result.category]) {
+          categoryStats[result.category] = { correct: 0, total: 0 }
+        }
+        categoryStats[result.category].total++
+        if (result.isCorrect) {
+          categoryStats[result.category].correct++
+        }
+      })
+
+      const finalResults: TestResult = {
+        id: `test-${Date.now()}`,
+        userId,
+        startTime: testStartTime || new Date(),
+        endTime: new Date(),
+        totalTimeSpent,
+        totalQuestions,
+        correctAnswers,
+        score: Math.round((correctAnswers / totalQuestions) * 100),
+        moduleResults: allResults,
+        categoryPerformance: categoryStats,
+        completedAt: new Date()
+      }
+
+      setTestResults(finalResults)
+      setIsComplete(true)
+    }
+  }, [currentModuleIndex, calculateModuleResults, moduleResults, moduleStartTime, testStartTime, userId])
+
   // Start test
   const startTest = useCallback(() => {
     setHasStarted(true)
     setCurrentModuleIndex(0)
     setCurrentQuestionIndex(0)
-    setModuleStarted(false) // Show module start screen
+    setModuleStarted(false)
     setSelectedAnswers([])
+    setTestStartTime(new Date())
+    setModuleResults([])
+    setTestResults(null)
   }, [])
 
   // Start module
   const startModule = useCallback(() => {
-    setModuleStarted(true) // Now actually start the module
+    setModuleStarted(true)
     setModuleStartTime(new Date())
     // Set initial time for current module
-    const duration = currentModule?.duration || 32 // Default 32 minutes
-    setTimeRemaining(duration * 60) // Convert to seconds
+    const duration = currentModule?.duration || 32
+    setTimeRemaining(duration * 60)
     // Initialize selected answers array for this module
     const questionCount = currentModule?.questionCount || 27
-    setSelectedAnswers(new Array(questionCount).fill(-1)) // -1 means no answer selected
+    setSelectedAnswers(new Array(questionCount).fill(-1))
   }, [currentModule])
 
   // Select answer
@@ -125,19 +228,8 @@ export function useTestState(userId: string) {
 
   // Submit module
   const submitModule = useCallback(() => {
-    if (currentModuleIndex < MODULE_CONFIGS.length - 1) {
-      setIsTransitioning(true)
-      setTimeout(() => {
-        setCurrentModuleIndex(prev => prev + 1)
-        setCurrentQuestionIndex(0)
-        setModuleStarted(false) // Show next module start screen
-        setSelectedAnswers([])
-        setIsTransitioning(false)
-      }, 2000)
-    } else {
-      setIsComplete(true)
-    }
-  }, [currentModuleIndex])
+    handleModuleSubmit()
+  }, [handleModuleSubmit])
 
   // Continue to next module
   const continueToNextModule = useCallback(() => {
@@ -158,13 +250,13 @@ export function useTestState(userId: string) {
       currentAnswers: selectedAnswers,
       timeRemaining,
       moduleStartTime: moduleStartTime || new Date(),
-      testStartTime: new Date(),
+      testStartTime: testStartTime || new Date(),
       isTransitioning,
       completedModules: [],
       session: {
         id: 'temp',
         userId,
-        startTime: new Date(),
+        startTime: testStartTime || new Date(),
         modules: [],
         overallScore: 0,
         totalTimeSpent: 0,
@@ -180,6 +272,7 @@ export function useTestState(userId: string) {
     currentModule,
     currentQuestion,
     currentSelectedAnswer,
+    testResults,
     isTransitioning,
     isComplete,
     hasStarted,

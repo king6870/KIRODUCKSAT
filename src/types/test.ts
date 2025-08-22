@@ -19,6 +19,35 @@ export interface Answer {
   isCorrect: boolean
 }
 
+// New detailed question result for analytics
+export interface QuestionResult {
+  questionId: string
+  question: string
+  category: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  userAnswer: number
+  correctAnswer: number
+  isCorrect: boolean
+  timeSpent: number
+  options: string[]
+  explanation: string
+}
+
+// New comprehensive test result
+export interface TestResult {
+  id: string
+  userId: string
+  startTime: Date
+  endTime: Date
+  totalTimeSpent: number // seconds
+  totalQuestions: number
+  correctAnswers: number
+  score: number // percentage
+  moduleResults: QuestionResult[][] // results for each module
+  categoryPerformance: Record<string, { correct: number; total: number }>
+  completedAt: Date
+}
+
 export interface ModuleConfig {
   id: number
   type: 'reading-writing' | 'math'
