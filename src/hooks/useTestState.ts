@@ -13,6 +13,11 @@ export function useTestState(userId: string) {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [moduleStarted, setModuleStarted] = useState(false)
+  
+  // Timer and answer state
+  const [timeRemaining, setTimeRemaining] = useState(0)
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([])
+  const [moduleStartTime, setModuleStartTime] = useState<Date | null>(null)
 
   // Get current module config
   const currentModule = useMemo(() => {
@@ -34,6 +39,39 @@ export function useTestState(userId: string) {
     return questions[currentQuestionIndex]
   }, [currentModule, currentQuestionIndex])
 
+  // Timer effect - starts when module is started
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
+    if (moduleStarted && timeRemaining > 0 && !isComplete && !isTransitioning) {
+      interval = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            // Time's up - auto submit module
+            setIsTransitioning(true)
+            setTimeout(() => {
+              if (currentModuleIndex < MODULE_CONFIGS.length - 1) {
+                setCurrentModuleIndex(prev => prev + 1)
+                setCurrentQuestionIndex(0)
+                setModuleStarted(false)
+                setSelectedAnswers([])
+                setIsTransitioning(false)
+              } else {
+                setIsComplete(true)
+              }
+            }, 2000)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [moduleStarted, timeRemaining, isComplete, isTransitioning, currentModuleIndex])
+
   // Initialize test state
   useEffect(() => {
     setIsLoading(false)
@@ -45,18 +83,29 @@ export function useTestState(userId: string) {
     setCurrentModuleIndex(0)
     setCurrentQuestionIndex(0)
     setModuleStarted(false) // Show module start screen
+    setSelectedAnswers([])
   }, [])
 
   // Start module
   const startModule = useCallback(() => {
     setModuleStarted(true) // Now actually start the module
-  }, [])
+    setModuleStartTime(new Date())
+    // Set initial time for current module
+    const duration = currentModule?.duration || 32 // Default 32 minutes
+    setTimeRemaining(duration * 60) // Convert to seconds
+    // Initialize selected answers array for this module
+    const questionCount = currentModule?.questionCount || 27
+    setSelectedAnswers(new Array(questionCount).fill(-1)) // -1 means no answer selected
+  }, [currentModule])
 
   // Select answer
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const selectAnswer = useCallback((_answer: number) => {
-    // Store selected answer
-  }, [])
+  const selectAnswer = useCallback((answerIndex: number) => {
+    setSelectedAnswers(prev => {
+      const newAnswers = [...prev]
+      newAnswers[currentQuestionIndex] = answerIndex
+      return newAnswers
+    })
+  }, [currentQuestionIndex])
 
   // Next question
   const nextQuestion = useCallback(() => {
@@ -82,6 +131,7 @@ export function useTestState(userId: string) {
         setCurrentModuleIndex(prev => prev + 1)
         setCurrentQuestionIndex(0)
         setModuleStarted(false) // Show next module start screen
+        setSelectedAnswers([])
         setIsTransitioning(false)
       }, 2000)
     } else {
@@ -94,6 +144,9 @@ export function useTestState(userId: string) {
     setIsTransitioning(false)
   }, [])
 
+  // Get current selected answer
+  const currentSelectedAnswer = selectedAnswers[currentQuestionIndex] ?? -1
+
   return {
     testState: testState || {
       currentModule: currentModuleIndex + 1,
@@ -102,9 +155,9 @@ export function useTestState(userId: string) {
       moduleType: currentModule?.type || 'reading-writing',
       questions: [[], [], [], []],
       answers: [[], [], [], []],
-      currentAnswers: [],
-      timeRemaining: currentModule?.duration ? currentModule.duration * 60 : 1920,
-      moduleStartTime: new Date(),
+      currentAnswers: selectedAnswers,
+      timeRemaining,
+      moduleStartTime: moduleStartTime || new Date(),
       testStartTime: new Date(),
       isTransitioning,
       completedModules: [],
@@ -119,13 +172,14 @@ export function useTestState(userId: string) {
       },
       moduleStarted,
       progress: (currentQuestionIndex / (currentModule?.questionCount || 1)) * 100,
-      questionsAnswered: currentQuestionIndex,
+      questionsAnswered: selectedAnswers.filter(answer => answer !== -1).length,
       lastModulePerformance: null,
       modules: MODULE_CONFIGS,
       testSession: null
     },
     currentModule,
     currentQuestion,
+    currentSelectedAnswer,
     isTransitioning,
     isComplete,
     hasStarted,

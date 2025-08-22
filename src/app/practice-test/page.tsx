@@ -13,6 +13,7 @@ export default function PracticeTest() {
   const {
     currentModule,
     currentQuestion,
+    currentSelectedAnswer,
     isTransitioning,
     isComplete,
     hasStarted,
@@ -108,10 +109,18 @@ export default function PracticeTest() {
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-purple-600">
+                <div className={`text-2xl font-bold transition-colors ${
+                  testState.timeRemaining <= 300 // 5 minutes
+                    ? 'text-red-500 animate-pulse'
+                    : testState.timeRemaining <= 600 // 10 minutes
+                    ? 'text-orange-500'
+                    : 'text-purple-600'
+                }`}>
                   {Math.floor(testState.timeRemaining / 60)}:{(testState.timeRemaining % 60).toString().padStart(2, '0')}
                 </div>
-                <div className="text-sm text-gray-500">Time Remaining</div>
+                <div className="text-sm text-gray-500">
+                  {testState.timeRemaining <= 300 ? '⚠️ Time Running Out!' : 'Time Remaining'}
+                </div>
               </div>
             </div>
             
@@ -139,20 +148,33 @@ export default function PracticeTest() {
               )}
               
               <div className="space-y-3">
-                {currentQuestion.options.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => selectAnswer(index)}
-                    className="w-full text-left p-4 rounded-2xl border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 group"
-                  >
-                    <span className="font-semibold text-purple-600 mr-3">
-                      {String.fromCharCode(65 + index)}.
-                    </span>
-                    <span className="text-gray-800 group-hover:text-purple-800">
-                      {option}
-                    </span>
-                  </button>
-                ))}
+                {currentQuestion.options.map((option, index) => {
+                  const isSelected = currentSelectedAnswer === index
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => selectAnswer(index)}
+                      className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 group ${
+                        isSelected
+                          ? 'border-purple-500 bg-purple-100 shadow-md'
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <span className={`font-semibold mr-3 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                          isSelected
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-gray-200 text-gray-600 group-hover:bg-purple-200 group-hover:text-purple-700'
+                        }`}>
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <span className={`${isSelected ? 'text-purple-900 font-medium' : 'text-gray-700'}`}>
+                          {option}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
             
@@ -165,8 +187,11 @@ export default function PracticeTest() {
                 ← Previous
               </button>
               
-              <div className="text-sm text-gray-500">
-                {testState.currentQuestionIndex + 1} / {currentModule.questionCount}
+              <div className="text-sm text-gray-500 text-center">
+                <div>{testState.currentQuestionIndex + 1} / {currentModule.questionCount}</div>
+                <div className="text-xs mt-1">
+                  {testState.questionsAnswered} answered
+                </div>
               </div>
               
               {testState.currentQuestionIndex === currentModule.questionCount - 1 ? (
