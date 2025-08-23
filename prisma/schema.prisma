@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts    Account[]
+  sessions    Session[]
+  testResults TestResult[]
+  
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+// SAT Questions Model
+model Question {
+  id           String   @id @default(cuid())
+  moduleType   String   // 'reading-writing' | 'math'
+  difficulty   String   // 'easy' | 'medium' | 'hard'
+  category     String   // 'algebra', 'geometry', 'reading-comprehension', etc.
+  question     String   @db.Text
+  passage      String?  @db.Text
+  options      Json     // Array of answer options
+  correctAnswer Int     // Index of correct answer (0-3)
+  explanation  String   @db.Text
+  timeEstimate Int      // Estimated time in seconds
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  questionResults QuestionResult[]
+
+  @@index([moduleType, difficulty, category])
+  @@map("questions")
+}
+
+// Test Results Model
+model TestResult {
+  id               String   @id @default(cuid())
+  userId           String
+  startTime        DateTime
+  endTime          DateTime
+  totalTimeSpent   Int      // seconds
+  totalQuestions   Int
+  correctAnswers   Int
+  score            Int      // percentage
+  categoryPerformance Json  // Record<string, { correct: number; total: number }>
+  completedAt      DateTime @default(now())
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionResults QuestionResult[]
+
+  @@index([userId, completedAt])
+  @@map("test_results")
+}
+
+// Individual Question Results
+model QuestionResult {
+  id            String   @id @default(cuid())
+  testResultId  String
+  questionId    String
+  userAnswer    Int      // User's selected answer index
+  isCorrect     Boolean
+  timeSpent     Int      // seconds spent on this question
+  createdAt     DateTime @default(now())
+
+  // Relations
+  testResult TestResult @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+  question   Question   @relation(fields: [questionId], references: [id])
+
+  @@index([testResultId])
+  @@index([questionId])
+  @@map("question_results")
+}
+
+// User Analytics and Progress Tracking
+model UserAnalytics {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  totalTestsTaken       Int      @default(0)
+  averageScore          Float    @default(0)
+  totalTimeSpent        Int      @default(0) // total seconds across all tests
+  strongestCategory     String?
+  weakestCategory       String?
+  improvementRate       Float    @default(0) // score improvement over time
+  lastTestDate          DateTime?
+  streakDays            Int      @default(0) // consecutive days of practice
+  totalQuestionsAnswered Int     @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("user_analytics")
+}
+
+// Category Performance Tracking
+model CategoryPerformance {
+  id           String   @id @default(cuid())
+  userId       String
+  category     String   // 'algebra', 'geometry', etc.
+  totalAnswered Int     @default(0)
+  totalCorrect Int      @default(0)
+  averageTime  Float    @default(0) // average seconds per question
+  lastPracticed DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("category_performance")
+}
+
+// Study Sessions for tracking practice patterns
+model StudySession {
+  id              String   @id @default(cuid())
+  userId          String
+  startTime       DateTime
+  endTime         DateTime?
+  questionsAnswered Int    @default(0)
+  timeSpent       Int      @default(0) // seconds
+  sessionType     String   // 'practice', 'full-test', 'category-focus'
+  categories      Json?    // Array of categories practiced
+  completed       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, startTime])
+  @@map("study_sessions")
+}
+
+// Feedback and Error Tracking
+model ErrorLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  errorType String   // 'api_error', 'client_error', 'database_error'
+  message   String   @db.Text
+  stack     String?  @db.Text
+  metadata  Json?    // Additional context
+  createdAt DateTime @default(now())
+
+  @@index([errorType, createdAt])
+  @@map("error_logs")
+}
+
+// App Usage Analytics
+model UsageAnalytics {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String   // 'test_started', 'question_answered', 'test_completed'
+  metadata    Json?    // Additional data about the action
+  userAgent   String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@map("usage_analytics")
+}

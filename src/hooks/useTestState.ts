@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { TestState, TestResult, QuestionResult } from '@/types/test'
+import { TestState, TestResult, QuestionResult, Question } from '@/types/test'
 import { MODULE_CONFIGS } from '@/data/moduleConfigs'
-import { QUESTION_POOLS } from '@/data/questionPools'
 
 export function useTestState(userId: string) {
   const [testState] = useState<TestState | null>(null)
@@ -23,6 +22,9 @@ export function useTestState(userId: string) {
   // Test results tracking
   const [testResults, setTestResults] = useState<TestResult | null>(null)
   const [moduleResults, setModuleResults] = useState<QuestionResult[][]>([])
+  
+  // Questions from database
+  const [currentModuleQuestions, setCurrentModuleQuestions] = useState<Question[]>([])
 
   // Get current module config
   const currentModule = useMemo(() => {
@@ -32,27 +34,50 @@ export function useTestState(userId: string) {
 
   // Get current question
   const currentQuestion = useMemo(() => {
-    if (!currentModule) return null
+    if (!currentModule || currentModuleQuestions.length === 0) return null
     
-    // For now, return a sample question from the question pools
-    const moduleType = currentModule.type
-    const questions = moduleType === 'reading-writing' 
-      ? QUESTION_POOLS.readingWriting.module1 
-      : QUESTION_POOLS.math.module1
-    
-    if (currentQuestionIndex >= questions.length) return null
-    return questions[currentQuestionIndex]
-  }, [currentModule, currentQuestionIndex])
+    if (currentQuestionIndex >= currentModuleQuestions.length) return null
+    return currentModuleQuestions[currentQuestionIndex]
+  }, [currentModule, currentModuleQuestions, currentQuestionIndex])
 
-  // Get all questions for current module
-  const currentModuleQuestions = useMemo(() => {
-    if (!currentModule) return []
-    
-    const moduleType = currentModule.type
-    return moduleType === 'reading-writing' 
-      ? QUESTION_POOLS.readingWriting.module1 
-      : QUESTION_POOLS.math.module1
-  }, [currentModule])
+  // Fetch questions from database
+  const fetchQuestions = useCallback(async (moduleType: string) => {
+    try {
+      setIsLoading(true)
+      const response = await fetch(`/api/questions?moduleType=${moduleType}&limit=27`)
+      if (response.ok) {
+        const questions = await response.json()
+        setCurrentModuleQuestions(questions)
+      } else {
+        console.error('Failed to fetch questions')
+      }
+    } catch (error) {
+      console.error('Error fetching questions:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Save test results to database
+  const saveTestResults = useCallback(async (results: TestResult) => {
+    try {
+      const response = await fetch('/api/test-results', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(results)
+      })
+
+      if (response.ok) {
+        console.log('Test results saved successfully')
+      } else {
+        console.error('Failed to save test results')
+      }
+    } catch (error) {
+      console.error('Error saving test results:', error)
+    }
+  }, [])
 
   // Calculate module results
   const calculateModuleResults = useCallback(() => {
@@ -82,10 +107,7 @@ export function useTestState(userId: string) {
 
   // Handle module submission
   const handleModuleSubmit = useCallback(() => {
-    const moduleEndTime = new Date()
-    // const moduleTimeSpent = moduleStartTime 
-    //   ? Math.floor((moduleEndTime.getTime() - moduleStartTime.getTime()) / 1000)
-    //   : 0
+    // const moduleEndTime = new Date()
 
     // Calculate results for current module
     const results = calculateModuleResults()
@@ -106,6 +128,12 @@ export function useTestState(userId: string) {
         setModuleStarted(false)
         setSelectedAnswers([])
         setIsTransitioning(false)
+        
+        // Fetch questions for next module
+        const nextModule = MODULE_CONFIGS[currentModuleIndex + 1]
+        if (nextModule) {
+          fetchQuestions(nextModule.type)
+        }
       }, 2000)
     } else {
       // Test complete - calculate final results
@@ -147,8 +175,11 @@ export function useTestState(userId: string) {
 
       setTestResults(finalResults)
       setIsComplete(true)
+      
+      // Save to database
+      saveTestResults(finalResults)
     }
-  }, [currentModuleIndex, calculateModuleResults, moduleResults, testStartTime, userId])
+  }, [currentModuleIndex, calculateModuleResults, moduleResults, testStartTime, userId, saveTestResults, fetchQuestions])
 
   // Timer effect - starts when module is started
   useEffect(() => {
@@ -187,7 +218,13 @@ export function useTestState(userId: string) {
     setTestStartTime(new Date())
     setModuleResults([])
     setTestResults(null)
-  }, [])
+    
+    // Fetch questions for first module
+    const firstModule = MODULE_CONFIGS[0]
+    if (firstModule) {
+      fetchQuestions(firstModule.type)
+    }
+  }, [fetchQuestions])
 
   // Start module
   const startModule = useCallback(() => {
@@ -197,9 +234,9 @@ export function useTestState(userId: string) {
     const duration = currentModule?.duration || 32
     setTimeRemaining(duration * 60)
     // Initialize selected answers array for this module
-    const questionCount = currentModule?.questionCount || 27
+    const questionCount = currentModuleQuestions.length || 27
     setSelectedAnswers(new Array(questionCount).fill(-1))
-  }, [currentModule])
+  }, [currentModule, currentModuleQuestions])
 
   // Select answer
   const selectAnswer = useCallback((answerIndex: number) => {
@@ -214,10 +251,10 @@ export function useTestState(userId: string) {
   const nextQuestion = useCallback(() => {
     if (!currentModule) return
     
-    if (currentQuestionIndex < currentModule.questionCount - 1) {
+    if (currentQuestionIndex < currentModuleQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1)
     }
-  }, [currentModule, currentQuestionIndex])
+  }, [currentModule, currentModuleQuestions, currentQuestionIndex])
 
   // Previous question
   const previousQuestion = useCallback(() => {
@@ -263,7 +300,7 @@ export function useTestState(userId: string) {
         status: 'in-progress' as const
       },
       moduleStarted,
-      progress: (currentQuestionIndex / (currentModule?.questionCount || 1)) * 100,
+      progress: (currentQuestionIndex / (currentModuleQuestions.length || 1)) * 100,
       questionsAnswered: selectedAnswers.filter(answer => answer !== -1).length,
       lastModulePerformance: null,
       modules: MODULE_CONFIGS,
