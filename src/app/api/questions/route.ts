@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const moduleType = searchParams.get('moduleType') // 'reading-writing' | 'math'
     const difficulty = searchParams.get('difficulty') // 'easy' | 'medium' | 'hard'
     const category = searchParams.get('category')
+    const subtopic = searchParams.get('subtopic')
     const limit = parseInt(searchParams.get('limit') || '27')
 
     // Build where clause
@@ -26,6 +27,10 @@ export async function GET(request: NextRequest) {
       where.category = category
     }
 
+    if (subtopic) {
+      where.subtopic = subtopic
+    }
+
     // Fetch questions from database
     const questions = await prisma.question.findMany({
       where,
@@ -35,29 +40,43 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Transform to match frontend interface
+    // Transform to match frontend interface with enhanced features
     const transformedQuestions = questions.map((q: {
       id: string;
       moduleType: string;
       difficulty: string;
       category: string;
+      subtopic: string | null;
       question: string;
       passage: string | null;
       options: unknown;
       correctAnswer: number;
       explanation: string;
+      wrongAnswerExplanations: unknown;
+      imageUrl: string | null;
+      imageAlt: string | null;
+      chartData: unknown;
       timeEstimate: number;
+      source: string | null;
+      tags: string[];
     }) => ({
       id: q.id,
       moduleType: q.moduleType,
       difficulty: q.difficulty,
       category: q.category,
+      subtopic: q.subtopic,
       question: q.question,
       passage: q.passage,
       options: q.options as string[],
       correctAnswer: q.correctAnswer,
       explanation: q.explanation,
-      timeEstimate: q.timeEstimate
+      wrongAnswerExplanations: q.wrongAnswerExplanations as Record<number, string>,
+      imageUrl: q.imageUrl,
+      imageAlt: q.imageAlt,
+      chartData: q.chartData,
+      timeEstimate: q.timeEstimate,
+      source: q.source,
+      tags: q.tags
     }))
 
     return NextResponse.json(transformedQuestions)

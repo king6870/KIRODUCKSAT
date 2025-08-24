@@ -164,9 +164,10 @@ async function updateUserAnalytics(userId: string, testData: {
     for (const [category, stats] of categoryEntries) {
       await prisma.categoryPerformance.upsert({
         where: {
-          userId_category: {
+          userId_category_subtopic: {
             userId,
-            category
+            category,
+            subtopic: category // Use category as subtopic for now
           }
         },
         update: {
@@ -181,6 +182,7 @@ async function updateUserAnalytics(userId: string, testData: {
         create: {
           userId,
           category,
+          subtopic: category, // Use category as subtopic for now
           totalAnswered: stats.total,
           totalCorrect: stats.correct,
           lastPracticed: new Date()

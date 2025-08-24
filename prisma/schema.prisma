@@ -67,18 +67,25 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
-// SAT Questions Model
+// Enhanced SAT Questions Model
 model Question {
   id           String   @id @default(cuid())
   moduleType   String   // 'reading-writing' | 'math'
   difficulty   String   // 'easy' | 'medium' | 'hard'
   category     String   // 'algebra', 'geometry', 'reading-comprehension', etc.
+  subtopic     String?  // More specific subtopic (e.g., 'linear-equations', 'quadratic-functions')
   question     String   @db.Text
-  passage      String?  @db.Text
+  passage      String?  @db.Text // Reading passages or context
   options      Json     // Array of answer options
   correctAnswer Int     // Index of correct answer (0-3)
-  explanation  String   @db.Text
+  explanation  String   @db.Text // Detailed explanation for correct answer
+  wrongAnswerExplanations Json? // Explanations for why each wrong answer is incorrect
+  imageUrl     String?  // URL for math charts, graphs, diagrams
+  imageAlt     String?  // Alt text for accessibility
+  chartData    Json?    // Data for generating charts/graphs dynamically
   timeEstimate Int      // Estimated time in seconds
+  source       String?  // Source of the question (e.g., 'Official SAT', 'Khan Academy')
+  tags         String[] // Additional tags for categorization
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -87,6 +94,7 @@ model Question {
   questionResults QuestionResult[]
 
   @@index([moduleType, difficulty, category])
+  @@index([category, subtopic])
   @@map("questions")
 }
 
@@ -101,6 +109,8 @@ model TestResult {
   correctAnswers   Int
   score            Int      // percentage
   categoryPerformance Json  // Record<string, { correct: number; total: number }>
+  subtopicPerformance Json? // Detailed subtopic breakdown
+  difficultyPerformance Json? // Performance by difficulty level
   completedAt      DateTime @default(now())
 
   // Relations
@@ -139,6 +149,8 @@ model UserAnalytics {
   totalTimeSpent        Int      @default(0) // total seconds across all tests
   strongestCategory     String?
   weakestCategory       String?
+  strongestSubtopic     String?
+  weakestSubtopic       String?
   improvementRate       Float    @default(0) // score improvement over time
   lastTestDate          DateTime?
   streakDays            Int      @default(0) // consecutive days of practice
@@ -154,6 +166,7 @@ model CategoryPerformance {
   id           String   @id @default(cuid())
   userId       String
   category     String   // 'algebra', 'geometry', etc.
+  subtopic     String?  // More specific subtopic
   totalAnswered Int     @default(0)
   totalCorrect Int      @default(0)
   averageTime  Float    @default(0) // average seconds per question
@@ -161,7 +174,7 @@ model CategoryPerformance {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@unique([userId, category])
+  @@unique([userId, category, subtopic])
   @@index([userId])
   @@map("category_performance")
 }
@@ -176,6 +189,7 @@ model StudySession {
   timeSpent       Int      @default(0) // seconds
   sessionType     String   // 'practice', 'full-test', 'category-focus'
   categories      Json?    // Array of categories practiced
+  subtopics       Json?    // Array of subtopics practiced
   completed       Boolean  @default(false)
   createdAt       DateTime @default(now())
 
