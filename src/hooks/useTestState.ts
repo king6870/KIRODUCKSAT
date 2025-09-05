@@ -41,18 +41,34 @@ export function useTestState(userId: string) {
   }, [currentModule, currentModuleQuestions, currentQuestionIndex])
 
   // Fetch questions from database
-  const fetchQuestions = useCallback(async (moduleType: string) => {
+  const fetchQuestions = useCallback(async (moduleType: string, questionCount?: number) => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/questions?moduleType=${moduleType}&limit=27`)
+      const limit = questionCount || (moduleType === 'math' ? 22 : 27)
+      console.log(`🔍 Fetching ${limit} questions for moduleType: ${moduleType}`)
+      
+      const response = await fetch(`/api/questions?moduleType=${moduleType}&limit=${limit}`)
+      
       if (response.ok) {
         const questions = await response.json()
-        setCurrentModuleQuestions(questions)
+        console.log(`✅ Received ${questions.length} questions from API`)
+        
+        if (Array.isArray(questions) && questions.length > 0) {
+          setCurrentModuleQuestions(questions)
+          console.log(`📚 Set ${questions.length} questions for current module`)
+        } else {
+          console.warn('⚠️ No questions returned from API')
+          setCurrentModuleQuestions([])
+        }
       } else {
-        console.error('Failed to fetch questions')
+        console.error('❌ API response not ok:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Error details:', errorText)
+        setCurrentModuleQuestions([])
       }
     } catch (error) {
-      console.error('Error fetching questions:', error)
+      console.error('❌ Error fetching questions:', error)
+      setCurrentModuleQuestions([])
     } finally {
       setIsLoading(false)
     }
@@ -93,6 +109,7 @@ export function useTestState(userId: string) {
         question: question.question,
         category: question.category,
         difficulty: question.difficulty,
+        moduleType: question.moduleType, // Add moduleType for SAT scoring
         userAnswer,
         correctAnswer: question.correctAnswer,
         isCorrect,
@@ -132,11 +149,11 @@ export function useTestState(userId: string) {
         // Fetch questions for next module
         const nextModule = MODULE_CONFIGS[currentModuleIndex + 1]
         if (nextModule) {
-          fetchQuestions(nextModule.type)
+          fetchQuestions(nextModule.type, nextModule.questionCount)
         }
       }, 2000)
     } else {
-      // Test complete - calculate final results
+      // Test complete - calculate final results with SAT scoring
       const allResults = [...moduleResults]
       allResults[currentModuleIndex] = results
       
@@ -147,6 +164,12 @@ export function useTestState(userId: string) {
         ? Math.floor((new Date().getTime() - testStartTime.getTime()) / 1000)
         : 0
 
+      // Separate by module type for SAT scoring
+      const rwQuestions = flatResults.filter(r => r.moduleType === 'reading-writing')
+      const mathQuestions = flatResults.filter(r => r.moduleType === 'math')
+      const rwCorrect = rwQuestions.filter(r => r.isCorrect).length
+      const mathCorrect = mathQuestions.filter(r => r.isCorrect).length
+
       // Calculate category performance
       const categoryStats: Record<string, { correct: number; total: number }> = {}
       flatResults.forEach(result => {
@@ -156,6 +179,20 @@ export function useTestState(userId: string) {
         categoryStats[result.category].total++
         if (result.isCorrect) {
           categoryStats[result.category].correct++
+        }
+      })
+
+      // Calculate difficulty performance
+      const difficultyStats: Record<string, { correct: number; total: number }> = {
+        easy: { correct: 0, total: 0 },
+        medium: { correct: 0, total: 0 },
+        hard: { correct: 0, total: 0 }
+      }
+      
+      flatResults.forEach(result => {
+        difficultyStats[result.difficulty].total++
+        if (result.isCorrect) {
+          difficultyStats[result.difficulty].correct++
         }
       })
 
@@ -170,6 +207,8 @@ export function useTestState(userId: string) {
         score: Math.round((correctAnswers / totalQuestions) * 100),
         moduleResults: allResults,
         categoryPerformance: categoryStats,
+        subtopicPerformance: categoryStats, // For now, same as category
+        difficultyPerformance: difficultyStats,
         completedAt: new Date()
       }
 
@@ -208,6 +247,26 @@ export function useTestState(userId: string) {
     setIsLoading(false)
   }, [userId])
 
+  // Start specific module (for admin)
+  const startSpecificModule = useCallback((moduleId: number) => {
+    const moduleIndex = moduleId - 1 // Convert to 0-based index
+    const targetModule = MODULE_CONFIGS[moduleIndex]
+    
+    if (targetModule) {
+      setHasStarted(true)
+      setCurrentModuleIndex(moduleIndex)
+      setCurrentQuestionIndex(0)
+      setModuleStarted(false)
+      setSelectedAnswers([])
+      setTestStartTime(new Date())
+      setModuleResults([])
+      setTestResults(null)
+      
+      // Fetch questions for selected module
+      fetchQuestions(targetModule.type, targetModule.questionCount)
+    }
+  }, [fetchQuestions])
+
   // Start test
   const startTest = useCallback(() => {
     setHasStarted(true)
@@ -222,7 +281,7 @@ export function useTestState(userId: string) {
     // Fetch questions for first module
     const firstModule = MODULE_CONFIGS[0]
     if (firstModule) {
-      fetchQuestions(firstModule.type)
+      fetchQuestions(firstModule.type, firstModule.questionCount)
     }
   }, [fetchQuestions])
 
@@ -314,6 +373,7 @@ export function useTestState(userId: string) {
     isComplete,
     hasStarted,
     startTest,
+    startSpecificModule,
     startModule,
     selectAnswer,
     nextQuestion,

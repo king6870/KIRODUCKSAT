@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -67,9 +68,45 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
+// Topics and Subtopics for SAT Content Organization
+model Topic {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "Algebra", "Reading Comprehension"
+  moduleType  String   // 'reading-writing' | 'math'
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  subtopics   Subtopic[]
+
+  @@map("topics")
+}
+
+model Subtopic {
+  id              String   @id @default(cuid())
+  topicId         String
+  name            String   // e.g., "Linear Equations", "Main Ideas"
+  description     String?
+  targetQuestions Int      @default(100) // Target number of questions
+  currentCount    Int      @default(0)   // Current number of questions
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  topic           Topic      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  questions       Question[]
+
+  @@unique([topicId, name])
+  @@map("subtopics")
+}
+
 // Enhanced SAT Questions Model
 model Question {
   id           String   @id @default(cuid())
+  subtopicId   String?  // Link to subtopic
   moduleType   String   // 'reading-writing' | 'math'
   difficulty   String   // 'easy' | 'medium' | 'hard'
   category     String   // 'algebra', 'geometry', 'reading-comprehension', etc.
@@ -91,10 +128,12 @@ model Question {
   updatedAt    DateTime @updatedAt
 
   // Relations
+  subtopicRef     Subtopic? @relation(fields: [subtopicId], references: [id])
   questionResults QuestionResult[]
 
   @@index([moduleType, difficulty, category])
   @@index([category, subtopic])
+  @@index([subtopicId])
   @@map("questions")
 }
 
@@ -108,6 +147,10 @@ model TestResult {
   totalQuestions   Int
   correctAnswers   Int
   score            Int      // percentage
+  satTotalScore    Int?     // SAT score 400-1600
+  satReadingScore  Int?     // Reading & Writing score 200-800
+  satMathScore     Int?     // Math score 200-800
+  percentile       Int?     // 1-99 percentile
   categoryPerformance Json  // Record<string, { correct: number; total: number }>
   subtopicPerformance Json? // Detailed subtopic breakdown
   difficultyPerformance Json? // Performance by difficulty level
@@ -118,6 +161,7 @@ model TestResult {
   questionResults QuestionResult[]
 
   @@index([userId, completedAt])
+  @@index([satTotalScore])
   @@map("test_results")
 }
 

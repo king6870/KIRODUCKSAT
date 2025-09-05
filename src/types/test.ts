@@ -10,6 +10,9 @@ export interface Question {
   correctAnswer: number
   explanation: string
   timeEstimate: number // seconds
+  chartData?: any // Chart/diagram data
+  imageUrl?: string
+  imageAlt?: string
 }
 
 export interface Answer {
@@ -25,6 +28,7 @@ export interface QuestionResult {
   question: string
   category: string
   difficulty: 'easy' | 'medium' | 'hard'
+  moduleType: 'reading-writing' | 'math'
   userAnswer: number
   correctAnswer: number
   isCorrect: boolean
@@ -45,6 +49,8 @@ export interface TestResult {
   score: number // percentage
   moduleResults: QuestionResult[][] // results for each module
   categoryPerformance: Record<string, { correct: number; total: number }>
+  subtopicPerformance?: Record<string, { correct: number; total: number }>
+  difficultyPerformance?: Record<string, { correct: number; total: number }>
   completedAt: Date
 }
 

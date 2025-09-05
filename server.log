@@ -1,0 +1,26 @@
+
+> ducksat-app@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Warning: Found multiple lockfiles. Selecting /mnt/c/Users/lionv/package-lock.json.
+   Consider removing the lockfiles at:
+   * /mnt/c/Users/lionv/DuckSAT/ducksat-app/package-lock.json
+
+   ▲ Next.js 15.4.7 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://10.255.255.254:3000
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 12.2s
+ ○ Compiling /api/admin/questions ...
+ ✓ Compiled /api/admin/questions in 2.6s
+ GET /api/admin/questions 200 in 4877ms
+ ○ Compiling /api/admin/generate-questions ...
+ ✓ Compiled /api/admin/generate-questions in 826ms
+ POST /api/admin/generate-questions 403 in 1252ms
+ POST /api/admin/generate-questions 403 in 359ms
+ POST /api/admin/generate-questions 403 in 389ms
+ POST /api/admin/generate-questions 403 in 403ms
+ POST /api/admin/generate-questions 403 in 332ms
+[?25h

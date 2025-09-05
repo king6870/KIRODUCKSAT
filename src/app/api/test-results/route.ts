@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { calculateSATScore } from '@/utils/satScoring'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +29,21 @@ export async function POST(request: NextRequest) {
       correctAnswers,
       score,
       moduleResults,
-      categoryPerformance
+      categoryPerformance,
+      subtopicPerformance,
+      difficultyPerformance
     } = await request.json()
 
-    // Create test result
+    // Calculate SAT scores
+    const flatResults = moduleResults.flat()
+    const rwQuestions = flatResults.filter((r: any) => r.moduleType === 'reading-writing')
+    const mathQuestions = flatResults.filter((r: any) => r.moduleType === 'math')
+    const rwCorrect = rwQuestions.filter((r: any) => r.isCorrect).length
+    const mathCorrect = mathQuestions.filter((r: any) => r.isCorrect).length
+
+    const satScore = calculateSATScore(rwCorrect, rwQuestions.length, mathCorrect, mathQuestions.length)
+
+    // Create test result with SAT scores
     const testResult = await prisma.testResult.create({
       data: {
         userId: user.id,
@@ -41,7 +53,13 @@ export async function POST(request: NextRequest) {
         totalQuestions,
         correctAnswers,
         score,
-        categoryPerformance
+        satTotalScore: satScore.totalScore,
+        satReadingScore: satScore.readingWritingScore,
+        satMathScore: satScore.mathScore,
+        percentile: satScore.percentile,
+        categoryPerformance,
+        subtopicPerformance: subtopicPerformance || categoryPerformance,
+        difficultyPerformance: difficultyPerformance || {}
       }
     })
 
@@ -66,169 +84,62 @@ export async function POST(request: NextRequest) {
     // Update user analytics
     await updateUserAnalytics(user.id, {
       score,
+      satScore: satScore.totalScore,
       totalTimeSpent,
       totalQuestions,
       correctAnswers,
       categoryPerformance
     })
 
-    // Log usage analytics
-    await prisma.usageAnalytics.create({
-      data: {
-        userId: user.id,
-        action: 'test_completed',
-        metadata: {
-          score,
-          totalQuestions,
-          correctAnswers,
-          timeSpent: totalTimeSpent
-        }
-      }
-    })
-
     return NextResponse.json({ 
       success: true, 
-      testResultId: testResult.id 
+      testResultId: testResult.id,
+      satScore: satScore.totalScore
     })
+
   } catch (error) {
-    console.error('Error saving test result:', error)
-    return NextResponse.json(
-      { error: 'Failed to save test result' },
-      { status: 500 }
-    )
+    console.error('Error saving test results:', error)
+    return NextResponse.json({ error: 'Failed to save test results' }, { status: 500 })
   }
 }
 
-async function updateUserAnalytics(userId: string, testData: {
-  score: number;
-  totalTimeSpent: number;
-  totalQuestions: number;
-  correctAnswers: number;
-  categoryPerformance: Record<string, { correct: number; total: number }>;
-}) {
+async function updateUserAnalytics(userId: string, testData: any) {
   try {
-    // Get or create user analytics
-    let analytics = await prisma.userAnalytics.findUnique({
+    // Get existing analytics
+    const existing = await prisma.userAnalytics.findUnique({
       where: { userId }
     })
 
-    if (!analytics) {
-      analytics = await prisma.userAnalytics.create({
+    if (existing) {
+      // Update existing analytics
+      const newTestCount = existing.totalTestsTaken + 1
+      const newAverageScore = ((existing.averageScore * existing.totalTestsTaken) + testData.satScore) / newTestCount
+      
+      await prisma.userAnalytics.update({
+        where: { userId },
         data: {
-          userId,
-          totalTestsTaken: 0,
-          averageScore: 0,
-          totalTimeSpent: 0,
-          totalQuestionsAnswered: 0
+          totalTestsTaken: newTestCount,
+          averageScore: newAverageScore,
+          totalTimeSpent: existing.totalTimeSpent + testData.totalTimeSpent,
+          totalQuestionsAnswered: existing.totalQuestionsAnswered + testData.totalQuestions,
+          lastTestDate: new Date(),
+          updatedAt: new Date()
         }
       })
-    }
-
-    // Calculate new averages
-    const newTestCount = analytics.totalTestsTaken + 1
-    const newAverageScore = (
-      (analytics.averageScore * analytics.totalTestsTaken + testData.score) / 
-      newTestCount
-    )
-
-    // Find strongest and weakest categories
-    const categoryEntries = Object.entries(testData.categoryPerformance)
-    const categoryPercentages = categoryEntries.map(([category, stats]) => ({
-      category,
-      percentage: (stats.correct / stats.total) * 100
-    }))
-    
-    const strongestCategory = categoryPercentages.reduce((max, curr) => 
-      curr.percentage > max.percentage ? curr : max
-    ).category
-
-    const weakestCategory = categoryPercentages.reduce((min, curr) => 
-      curr.percentage < min.percentage ? curr : min
-    ).category
-
-    // Update analytics
-    await prisma.userAnalytics.update({
-      where: { userId },
-      data: {
-        totalTestsTaken: newTestCount,
-        averageScore: newAverageScore,
-        totalTimeSpent: analytics.totalTimeSpent + testData.totalTimeSpent,
-        totalQuestionsAnswered: analytics.totalQuestionsAnswered + testData.totalQuestions,
-        strongestCategory,
-        weakestCategory,
-        lastTestDate: new Date()
-      }
-    })
-
-    // Update category performance
-    for (const [category, stats] of categoryEntries) {
-      await prisma.categoryPerformance.upsert({
-        where: {
-          userId_category_subtopic: {
-            userId,
-            category,
-            subtopic: category // Use category as subtopic for now
-          }
-        },
-        update: {
-          totalAnswered: {
-            increment: stats.total
-          },
-          totalCorrect: {
-            increment: stats.correct
-          },
-          lastPracticed: new Date()
-        },
-        create: {
+    } else {
+      // Create new analytics
+      await prisma.userAnalytics.create({
+        data: {
           userId,
-          category,
-          subtopic: category, // Use category as subtopic for now
-          totalAnswered: stats.total,
-          totalCorrect: stats.correct,
-          lastPracticed: new Date()
+          totalTestsTaken: 1,
+          averageScore: testData.satScore,
+          totalTimeSpent: testData.totalTimeSpent,
+          totalQuestionsAnswered: testData.totalQuestions,
+          lastTestDate: new Date()
         }
       })
     }
   } catch (error) {
     console.error('Error updating user analytics:', error)
-  }
-}
-
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Fetch user's test results
-    const testResults = await prisma.testResult.findMany({
-      where: { userId: user.id },
-      include: {
-        questionResults: {
-          include: {
-            question: true
-          }
-        }
-      },
-      orderBy: { completedAt: 'desc' }
-    })
-
-    return NextResponse.json(testResults)
-  } catch (error) {
-    console.error('Error fetching test results:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch test results' },
-      { status: 500 }
-    )
   }
 }

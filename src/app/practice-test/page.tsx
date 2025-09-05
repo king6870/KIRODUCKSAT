@@ -7,6 +7,8 @@ import { useTestState } from '@/hooks/useTestState'
 import TestLauncher from '@/components/test/TestLauncher'
 import TestAnalytics from '@/components/test/TestAnalytics'
 import ModuleStart from '@/components/test/ModuleStart'
+import MathRenderer from '@/components/MathRenderer'
+import ChartRenderer from '@/components/ChartRenderer'
 
 export default function PracticeTest() {
   const { data: session } = useSession()
@@ -41,6 +43,7 @@ export default function PracticeTest() {
       moduleStarted: testState.moduleStarted,
       currentModule: currentModule?.id,
       currentQuestion: currentQuestion?.id,
+      currentQuestionPassage: currentQuestion?.passage,
       isTransitioning,
       isComplete
     })
@@ -146,13 +149,35 @@ export default function PracticeTest() {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl p-8 border border-white/20">
             <div className="mb-8">
-              <h3 className="text-xl font-semibold mb-6 text-gray-900">{currentQuestion.question}</h3>
-              
+              {/* Always show passage first if it exists */}
               {currentQuestion.passage && (
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl mb-6 border border-blue-200/50">
-                  <p className="text-gray-700 leading-relaxed">{currentQuestion.passage}</p>
+                <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 shadow-sm">
+                  <div className="flex items-center mb-4">
+                    <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold mr-3">
+                      📖 Reading Passage
+                    </span>
+                    <span className="text-blue-700 text-sm font-medium">
+                      Read carefully before answering
+                    </span>
+                  </div>
+                  <div className="prose prose-lg max-w-none">
+                    <div className="text-gray-800 leading-relaxed font-medium bg-white p-4 rounded-lg border border-blue-100">
+                      <MathRenderer>{currentQuestion.passage}</MathRenderer>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Chart/Diagram */}
+              {currentQuestion.chartData && (
+                <div className="mb-6">
+                  <ChartRenderer chartData={currentQuestion.chartData} />
+                </div>
+              )}
+
+              <h3 className="text-xl font-semibold mb-6 text-gray-900">
+                <MathRenderer>{currentQuestion.question}</MathRenderer>
+              </h3>
               
               <div className="space-y-3">
                 {currentQuestion.options.map((option, index) => {
@@ -176,7 +201,7 @@ export default function PracticeTest() {
                           {String.fromCharCode(65 + index)}
                         </span>
                         <span className={`${isSelected ? 'text-purple-900 font-medium' : 'text-gray-700'}`}>
-                          {option}
+                          <MathRenderer>{option}</MathRenderer>
                         </span>
                       </div>
                     </button>

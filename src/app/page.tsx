@@ -39,6 +39,17 @@ export default function Home() {
                     <Link href="/progress" className="relative text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-purple-400 font-medium transition-all duration-300 hover:scale-105">
                       Progress
                     </Link>
+                    {/* Admin Links */}
+                    {(session.user?.email === 'lionvihaan@gmail.com' || session.user?.email === 'kingjacobisthegoat@gmail.com') && (
+                      <>
+                        <Link href="/admin/questions" className="relative text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 font-medium transition-all duration-300 hover:scale-105">
+                          Admin: Questions
+                        </Link>
+                        <Link href="/demo-interactive-math" className="relative text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-all duration-300 hover:scale-105">
+                          Demo: Interactive
+                        </Link>
+                      </>
+                    )}
                   </>
                 )}
                 <button className="relative text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-purple-400 font-medium transition-all duration-300 hover:scale-105">

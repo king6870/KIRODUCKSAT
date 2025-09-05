@@ -4,62 +4,65 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const moduleType = searchParams.get('moduleType') // 'reading-writing' | 'math'
-    const difficulty = searchParams.get('difficulty') // 'easy' | 'medium' | 'hard'
-    const category = searchParams.get('category')
-    const subtopic = searchParams.get('subtopic')
+    const moduleType = searchParams.get('moduleType') || 'reading-writing'
     const limit = parseInt(searchParams.get('limit') || '27')
 
-    // Build where clause
-    const where: Record<string, unknown> = {
-      isActive: true
-    }
+    console.log(`Fetching ${limit} questions for moduleType: ${moduleType}`)
 
-    if (moduleType) {
-      where.moduleType = moduleType
-    }
-
-    if (difficulty) {
-      where.difficulty = difficulty
-    }
-
-    if (category) {
-      where.category = category
-    }
-
-    if (subtopic) {
-      where.subtopic = subtopic
-    }
-
-    // Fetch questions from database
+    // Get questions with better distribution across difficulties and categories
     const questions = await prisma.question.findMany({
-      where,
-      take: limit,
-      orderBy: {
-        createdAt: 'asc'
-      }
+      where: {
+        isActive: true,
+        moduleType
+      },
+      take: limit * 2, // Get more questions to allow for better selection
+      orderBy: [
+        { difficulty: 'asc' },
+        { category: 'asc' },
+        { createdAt: 'desc' }
+      ]
     })
 
-    // Transform to match frontend interface with enhanced features
-    const transformedQuestions = questions.map((q: {
-      id: string;
-      moduleType: string;
-      difficulty: string;
-      category: string;
-      subtopic: string | null;
-      question: string;
-      passage: string | null;
-      options: unknown;
-      correctAnswer: number;
-      explanation: string;
-      wrongAnswerExplanations: unknown;
-      imageUrl: string | null;
-      imageAlt: string | null;
-      chartData: unknown;
-      timeEstimate: number;
-      source: string | null;
-      tags: string[];
-    }) => ({
+    console.log(`Found ${questions.length} total questions for ${moduleType}`)
+
+    // Distribute questions across difficulties for better test balance
+    const easyQuestions = questions.filter(q => q.difficulty === 'easy')
+    const mediumQuestions = questions.filter(q => q.difficulty === 'medium')
+    const hardQuestions = questions.filter(q => q.difficulty === 'hard')
+
+    // SAT-like distribution: ~40% easy, 40% medium, 20% hard
+    const easyCount = Math.floor(limit * 0.4)
+    const mediumCount = Math.floor(limit * 0.4)
+    const hardCount = limit - easyCount - mediumCount
+
+    const selectedQuestions = [
+      ...easyQuestions.slice(0, easyCount),
+      ...mediumQuestions.slice(0, mediumCount),
+      ...hardQuestions.slice(0, hardCount)
+    ]
+
+    // If we don't have enough questions in specific difficulties, fill with available ones
+    while (selectedQuestions.length < limit && questions.length > selectedQuestions.length) {
+      const remaining = questions.filter(q => !selectedQuestions.includes(q))
+      if (remaining.length > 0) {
+        selectedQuestions.push(remaining[0])
+      } else {
+        break
+      }
+    }
+
+    // Shuffle the selected questions for variety
+    const shuffledQuestions = selectedQuestions
+      .sort(() => Math.random() - 0.5)
+      .slice(0, limit)
+
+    console.log(`Returning ${shuffledQuestions.length} questions with distribution:`, {
+      easy: shuffledQuestions.filter(q => q.difficulty === 'easy').length,
+      medium: shuffledQuestions.filter(q => q.difficulty === 'medium').length,
+      hard: shuffledQuestions.filter(q => q.difficulty === 'hard').length
+    })
+
+    return NextResponse.json(shuffledQuestions.map(q => ({
       id: q.id,
       moduleType: q.moduleType,
       difficulty: q.difficulty,
@@ -67,24 +70,19 @@ export async function GET(request: NextRequest) {
       subtopic: q.subtopic,
       question: q.question,
       passage: q.passage,
-      options: q.options as string[],
+      options: q.options,
       correctAnswer: q.correctAnswer,
       explanation: q.explanation,
-      wrongAnswerExplanations: q.wrongAnswerExplanations as Record<number, string>,
+      wrongAnswerExplanations: q.wrongAnswerExplanations || {},
       imageUrl: q.imageUrl,
       imageAlt: q.imageAlt,
       chartData: q.chartData,
-      timeEstimate: q.timeEstimate,
+      timeEstimate: q.timeEstimate || 90,
       source: q.source,
-      tags: q.tags
-    }))
-
-    return NextResponse.json(transformedQuestions)
+      tags: q.tags || []
+    })))
   } catch (error) {
     console.error('Error fetching questions:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch questions' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
   }
 }
