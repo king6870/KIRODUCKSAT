@@ -53,13 +53,13 @@ async function testImageGeneration() {
       } else {
         console.log('⚠️ DALL-E generation failed (expected - API may be restricted)')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('⚠️ DALL-E generation failed:', error.message)
     }
     
     console.log('\n✅ Image generation testing completed!')
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Image generation test failed:', error)
   }
 }

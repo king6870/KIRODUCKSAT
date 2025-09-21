@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ComprehensiveQuestionDisplay from '@/components/ComprehensiveQuestionDisplay'
 import ChartRenderer from '@/components/ChartRenderer'
+import ChartBuilder from '@/components/admin/ChartBuilder'
 
 interface Question {
   id: string
@@ -86,17 +87,28 @@ export default function AdminQuestions() {
 
   useEffect(() => {
     fetchQuestions()
-  }, [filters])
+  }, [filters, currentPage])
 
   const fetchQuestions = async () => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/admin/questions')
+      const params = new URLSearchParams()
+      if (filters.moduleType) params.append('moduleType', filters.moduleType)
+      if (filters.difficulty) params.append('difficulty', filters.difficulty)
+      if (filters.category) params.append('category', filters.category)
+      if (filters.subtopic) params.append('subtopic', filters.subtopic)
+      if (filters.search) params.append('search', filters.search)
+      if (filters.isActive !== '') params.append('isActive', filters.isActive)
+      params.append('page', currentPage.toString())
+      params.append('limit', '20')
+
+      const response = await fetch(`/api/admin/questions?${params.toString()}`)
       const data = await response.json()
 
       if (data.success) {
         setQuestions(data.questions)
         setStats(data.stats)
-        setTotalPages(1)
+        setTotalPages(data.pagination.pages)
       }
     } catch (error) {
       console.error('Failed to fetch questions:', error)
@@ -123,6 +135,18 @@ export default function AdminQuestions() {
       console.error('Failed to delete question:', error)
       alert('Failed to delete question')
     }
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      moduleType: '',
+      difficulty: '',
+      category: '',
+      subtopic: '',
+      search: '',
+      isActive: ''
+    })
+    setCurrentPage(1)
   }
 
   const handleToggleActive = async (questionId: string, isActive: boolean) => {
@@ -238,7 +262,15 @@ export default function AdminQuestions() {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+            <button
+              onClick={clearFilters}
+              className="text-sm text-gray-600 hover:text-gray-800 underline"
+            >
+              Clear All Filters
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <select
               value={filters.moduleType}
@@ -300,7 +332,16 @@ export default function AdminQuestions() {
         {/* Questions List */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-gray-500">Loading questions...</div>
+              </div>
+            ) : questions.length === 0 ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="text-gray-500">No questions found matching your filters.</div>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -382,13 +423,26 @@ export default function AdminQuestions() {
                         {question.chartData && (
                           <div className="text-xs bg-gray-50 p-2 rounded border-l-4 border-green-500">
                             <div className="font-semibold text-green-700 mb-2">📊 Chart Data:</div>
-                            <div className="text-gray-600 mb-2">
-                              Type: {question.chartData.type || 'Unknown'}<br/>
-                              Data Points: {question.chartData.data?.length || question.chartData.points?.length || 'N/A'}
-                            </div>
-                            <div className="bg-white p-2 rounded border">
-                              <ChartRenderer chartData={question.chartData} className="max-w-xs" />
-                            </div>
+                            {question.chartData.diagramType === 'image' ? (
+                              <div className="text-gray-600 mb-2">
+                                Type: Uploaded Image<br/>
+                                <img 
+                                  src={question.chartData.imageUrl} 
+                                  alt="Diagram" 
+                                  className="max-w-32 h-auto rounded border shadow-sm mt-2"
+                                />
+                              </div>
+                            ) : (
+                              <>
+                                <div className="text-gray-600 mb-2">
+                                  Type: {question.chartData.type || 'Unknown'}<br/>
+                                  Data Points: {question.chartData.data?.length || question.chartData.points?.length || 'N/A'}
+                                </div>
+                                <div className="bg-white p-2 rounded border">
+                                  <ChartRenderer chartData={question.chartData} className="max-w-xs" />
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                         
@@ -468,31 +522,37 @@ export default function AdminQuestions() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
 
         {/* Pagination */}
-        <div className="mt-6 flex justify-between items-center">
-          <div className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
+        {!loading && questions.length > 0 && (
+          <div className="mt-6 flex justify-between items-center">
+            <div className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * 20) + 1} to {Math.min(currentPage * 20, stats?.total || 0)} of {stats?.total || 0} questions
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-2 text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Preview Modal */}
@@ -519,6 +579,222 @@ export default function AdminQuestions() {
           </div>
         </div>
       )}
+
+      {/* Create Question Modal */}
+      {showCreateForm && (
+        <CreateQuestionModal 
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={() => {
+            setShowCreateForm(false)
+            fetchQuestions()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function CreateQuestionModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    question: '',
+    passage: '',
+    options: ['', '', '', ''],
+    correctAnswer: 0,
+    explanation: '',
+    moduleType: 'math',
+    difficulty: 'easy',
+    category: '',
+    chartData: null as any
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch('/api/admin/questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          timeEstimate: 90,
+          isActive: true
+        })
+      })
+
+      if (response.ok) {
+        onSuccess()
+      } else {
+        alert('Failed to create question')
+      }
+    } catch (error) {
+      console.error('Error creating question:', error)
+      alert('Error creating question')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const updateOption = (index: number, value: string) => {
+    const newOptions = [...formData.options]
+    newOptions[index] = value
+    setFormData({ ...formData, options: newOptions })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Create New Question</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Module Type</label>
+                <select
+                  value={formData.moduleType}
+                  onChange={(e) => setFormData({ ...formData, moduleType: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  required
+                >
+                  <option value="math">Math</option>
+                  <option value="reading-writing">Reading & Writing</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                <select
+                  value={formData.difficulty}
+                  onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  required
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <input
+                  type="text"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="e.g., Algebra, Geometry"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Question</label>
+              <textarea
+                value={formData.question}
+                onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                rows={3}
+                placeholder="Enter the question text..."
+                required
+              />
+            </div>
+
+            {/* Passage (optional) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Passage (Optional)</label>
+              <textarea
+                value={formData.passage}
+                onChange={(e) => setFormData({ ...formData, passage: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                rows={4}
+                placeholder="Enter passage text if needed..."
+              />
+            </div>
+
+            {/* Chart Builder */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Chart/Diagram (Optional)</label>
+              <ChartBuilder
+                chartData={formData.chartData}
+                onChange={(chartData) => setFormData({ ...formData, chartData })}
+              />
+            </div>
+
+            {/* Answer Options */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Answer Options</label>
+              <div className="space-y-2">
+                {formData.options.map((option, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="correctAnswer"
+                      checked={formData.correctAnswer === index}
+                      onChange={() => setFormData({ ...formData, correctAnswer: index })}
+                      className="text-blue-600"
+                    />
+                    <span className="font-medium text-gray-700">{String.fromCharCode(65 + index)}.</span>
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) => updateOption(index, e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Explanation */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Explanation</label>
+              <textarea
+                value={formData.explanation}
+                onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                rows={3}
+                placeholder="Explain why the correct answer is right..."
+                required
+              />
+            </div>
+
+            {/* Submit Buttons */}
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Creating...' : 'Create Question'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

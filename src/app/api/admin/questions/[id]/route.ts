@@ -1,49 +1,26 @@
-// Individual Question Management API
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { ADMIN_EMAILS } from '@/middleware/adminAuth'
 
-async function checkAdminAuth() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
-    return NextResponse.json(
-      { error: 'Admin access required' },
-      { status: 403 }
-    )
-  }
-  
-  return null
-}
-
-// GET - Get single question
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await checkAdminAuth()
-  if (authError) return authError
-
   try {
-    const params = await context.params
+    const { id } = await params
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const question = await prisma.question.findUnique({
-      where: { id: params.id },
-      include: {
-        subtopicRef: {
-          include: {
-            topic: true
-          }
-        }
-      }
+      where: { id }
     })
 
     if (!question) {
-      return NextResponse.json(
-        { error: 'Question not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -61,96 +38,54 @@ export async function GET(
         category: question.category,
         subtopic: question.subtopic,
         chartData: question.chartData,
-        imageUrl: question.imageUrl,
-        imageAlt: question.imageAlt,
         timeEstimate: question.timeEstimate,
         source: question.source,
         tags: question.tags,
         isActive: question.isActive,
         createdAt: question.createdAt,
-        updatedAt: question.updatedAt,
-        subtopicInfo: question.subtopicRef ? {
-          id: question.subtopicRef.id,
-          name: question.subtopicRef.name,
-          topic: question.subtopicRef.topic.name
-        } : null
+        updatedAt: question.updatedAt
       }
     })
+
   } catch (error) {
-    console.error('Failed to fetch question:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch question' },
-      { status: 500 }
-    )
+    console.error('Error fetching question:', error)
+    return NextResponse.json({ 
+      error: 'Failed to fetch question' 
+    }, { status: 500 })
   }
 }
 
-// PUT - Update question
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await checkAdminAuth()
-  if (authError) return authError
-
   try {
-    const params = await context.params
-    const body = await request.json()
-    const {
-      question,
-      passage,
-      options,
-      correctAnswer,
-      explanation,
-      wrongAnswerExplanations,
-      moduleType,
-      difficulty,
-      category,
-      subtopic,
-      chartData,
-      imageUrl,
-      imageAlt,
-      timeEstimate,
-      tags,
-      isActive
-    } = body
-
-    // Validation
-    if (!question || !options || options.length !== 4 || correctAnswer < 0 || correctAnswer > 3) {
-      return NextResponse.json(
-        { error: 'Invalid question data' },
-        { status: 400 }
-      )
+    const { id } = await params
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Find subtopic
-    const subtopicRecord = await prisma.subtopic.findFirst({
-      where: {
-        name: { contains: subtopic, mode: 'insensitive' }
-      }
-    })
-
+    const body = await request.json()
+    
     const updatedQuestion = await prisma.question.update({
-      where: { id: params.id },
+      where: { id },
       data: {
-        subtopicId: subtopicRecord?.id || null,
-        question,
-        passage,
-        options,
-        correctAnswer,
-        explanation,
-        wrongAnswerExplanations,
-        moduleType,
-        difficulty,
-        category,
-        subtopic,
-        chartData,
-        imageUrl,
-        imageAlt,
-        timeEstimate,
-        tags,
-        isActive,
-        updatedAt: new Date()
+        question: body.question,
+        passage: body.passage,
+        options: body.options,
+        correctAnswer: body.correctAnswer,
+        explanation: body.explanation,
+        wrongAnswerExplanations: body.wrongAnswerExplanations,
+        moduleType: body.moduleType,
+        difficulty: body.difficulty,
+        category: body.category,
+        subtopic: body.subtopic,
+        chartData: body.chartData,
+        timeEstimate: body.timeEstimate,
+        tags: body.tags,
+        isActive: body.isActive
       }
     })
 
@@ -158,63 +93,40 @@ export async function PUT(
       success: true,
       question: updatedQuestion
     })
+
   } catch (error) {
-    console.error('Failed to update question:', error)
-    return NextResponse.json(
-      { error: 'Failed to update question' },
-      { status: 500 }
-    )
+    console.error('Error updating question:', error)
+    return NextResponse.json({ 
+      error: 'Failed to update question' 
+    }, { status: 500 })
   }
 }
 
-// DELETE - Delete question
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await checkAdminAuth()
-  if (authError) return authError
-
   try {
-    const params = await context.params
-    // Check if question exists
-    const question = await prisma.question.findUnique({
-      where: { id: params.id }
-    })
-
-    if (!question) {
-      return NextResponse.json(
-        { error: 'Question not found' },
-        { status: 404 }
-      )
+    const { id } = await params
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Delete the question
     await prisma.question.delete({
-      where: { id: params.id }
+      where: { id }
     })
-
-    // Update subtopic count if needed
-    if (question.subtopicId) {
-      await prisma.subtopic.update({
-        where: { id: question.subtopicId },
-        data: {
-          currentCount: {
-            decrement: 1
-          }
-        }
-      })
-    }
 
     return NextResponse.json({
       success: true,
       message: 'Question deleted successfully'
     })
+
   } catch (error) {
-    console.error('Failed to delete question:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete question' },
-      { status: 500 }
-    )
+    console.error('Error deleting question:', error)
+    return NextResponse.json({ 
+      error: 'Failed to delete question' 
+    }, { status: 500 })
   }
 }

@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import ComprehensiveQuestionDisplay from '@/components/ComprehensiveQuestionDisplay'
+import ChartBuilder from '@/components/admin/ChartBuilder'
 
 const ADMIN_EMAILS = ['lionvihaan@gmail.com', 'kingjacobisthegoat@gmail.com']
 
@@ -25,6 +26,7 @@ interface QuestionForm {
   timeEstimate: number
   tags: string[]
   isActive: boolean
+  chartData: any
 }
 
 export default function EditQuestion() {
@@ -49,7 +51,8 @@ export default function EditQuestion() {
     graphType: 'coordinate-plane',
     timeEstimate: 90,
     tags: [],
-    isActive: true
+    isActive: true,
+    chartData: null
   })
 
   const [loading, setLoading] = useState(true)
@@ -96,7 +99,8 @@ export default function EditQuestion() {
           graphType: q.chartData?.graphType || 'coordinate-plane',
           timeEstimate: q.timeEstimate,
           tags: q.tags || [],
-          isActive: q.isActive
+          isActive: q.isActive,
+          chartData: q.chartData || null
         })
       }
     } catch (error) {
@@ -111,11 +115,7 @@ export default function EditQuestion() {
     try {
       const payload = {
         ...form,
-        chartData: form.chartDescription ? {
-          description: form.chartDescription,
-          interactionType: form.interactionType,
-          graphType: form.graphType
-        } : null
+        chartData: form.chartData
       }
 
       const response = await fetch(`/api/admin/questions/${questionId}`, {
@@ -291,52 +291,14 @@ export default function EditQuestion() {
               </div>
             )}
 
-            {/* Chart/Graph (for math questions) */}
-            {form.moduleType === 'math' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Chart/Graph Description</label>
-                  <textarea
-                    value={form.chartDescription}
-                    onChange={(e) => setForm({ ...form, chartDescription: e.target.value })}
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Describe the graph, chart, or diagram needed for this question..."
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Interaction Type</label>
-                    <select
-                      value={form.interactionType}
-                      onChange={(e) => setForm({ ...form, interactionType: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="point-placement">Point Placement</option>
-                      <option value="point-selection">Point Selection</option>
-                      <option value="point-dragging">Point Dragging</option>
-                      <option value="none">No Interaction</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Graph Type</label>
-                    <select
-                      value={form.graphType}
-                      onChange={(e) => setForm({ ...form, graphType: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    >
-                      <option value="coordinate-plane">Coordinate Plane</option>
-                      <option value="function-graph">Function Graph</option>
-                      <option value="geometry-diagram">Geometry Diagram</option>
-                      <option value="unit-circle">Unit Circle</option>
-                      <option value="statistics-chart">Statistics Chart</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Chart/Diagram Builder */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Chart/Diagram (Optional)</label>
+              <ChartBuilder
+                chartData={form.chartData}
+                onChange={(chartData) => setForm({ ...form, chartData })}
+              />
+            </div>
 
             {/* Question */}
             <div>

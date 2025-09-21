@@ -14,6 +14,20 @@ export default function ChartRenderer({ chartData, className = "" }: ChartRender
     return null
   }
 
+  // Handle uploaded image diagrams
+  if (chartData.diagramType === 'image' && chartData.imageUrl) {
+    return (
+      <div className={`chart-container ${className}`}>
+        <img
+          src={chartData.imageUrl}
+          alt="Question diagram"
+          className="max-w-full h-auto rounded border shadow-sm"
+          style={{ maxHeight: '400px' }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={`chart-container ${className}`}>
       <DynamicChart chartData={chartData} />

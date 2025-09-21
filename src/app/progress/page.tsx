@@ -2,19 +2,67 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+interface ProgressData {
+  testsCompleted: number
+  averageScore: number
+  strongAreas: string[]
+  weakAreas: string[]
+  recentScores: number[]
+  timeSpent: number
+  categoryPerformance: Array<{
+    category: string
+    percentage: number
+    correct: number
+    total: number
+  }>
+  modulePerformance: Array<{
+    module: string
+    percentage: number
+    correct: number
+    total: number
+  }>
+  testHistory: Array<{
+    id: string
+    score: number
+    completedAt: string
+    timeSpent: number
+    moduleType: string
+  }>
+}
 
 export default function Progress() {
   const { data: session } = useSession()
   const router = useRouter()
+  const [progressData, setProgressData] = useState<ProgressData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!session) {
       router.push('/')
+      return
     }
+
+    fetchProgressData()
   }, [session, router])
 
-  if (!session) {
+  const fetchProgressData = async () => {
+    try {
+      const response = await fetch('/api/progress')
+      const result = await response.json()
+      
+      if (result.success) {
+        setProgressData(result.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch progress data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!session || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex space-x-2">
@@ -26,210 +74,202 @@ export default function Progress() {
     )
   }
 
-  // Mock progress data
-  const progressData = {
-    testsCompleted: 3,
-    averageScore: 78,
-    strongAreas: ['Writing', 'Reading Comprehension'],
-    weakAreas: ['Algebra', 'Geometry'],
-    recentScores: [72, 76, 85],
-    timeSpent: 240 // minutes
+  if (!progressData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Progress Data</h2>
+          <p className="text-gray-600 mb-6">Take your first practice test to see your progress!</p>
+          <button
+            onClick={() => router.push('/practice-test')}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+          >
+            Start Practice Test
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-pink-400/20 to-indigo-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="relative mb-6">
-            <h1 className="text-6xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-              Your Progress
-            </h1>
-            <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-3xl blur-2xl"></div>
-          </div>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Track your SAT preparation journey with detailed analytics and personalized insights
-          </p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Your SAT Progress</h1>
+          <p className="text-xl text-gray-600">Track your improvement and identify areas for growth</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border border-white/20 dark:border-gray-700/50">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="text-4xl mb-2">🎯</div>
-              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                {progressData.testsCompleted}
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">Tests Completed</div>
-            </div>
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl font-bold text-blue-600 mb-2">{progressData.testsCompleted}</div>
+            <div className="text-gray-600">Tests Completed</div>
           </div>
-          
-          <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border border-white/20 dark:border-gray-700/50">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="text-4xl mb-2">📊</div>
-              <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                {progressData.averageScore}%
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">Average Score</div>
-            </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl font-bold text-green-600 mb-2">{progressData.averageScore}</div>
+            <div className="text-gray-600">Average Score</div>
           </div>
-          
-          <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border border-white/20 dark:border-gray-700/50">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="text-4xl mb-2">⏱️</div>
-              <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                {progressData.timeSpent}
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">Minutes Studied</div>
-            </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl font-bold text-purple-600 mb-2">{progressData.timeSpent}</div>
+            <div className="text-gray-600">Minutes Studied</div>
           </div>
-          
-          <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 border border-white/20 dark:border-gray-700/50">
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10">
-              <div className="text-4xl mb-2">🚀</div>
-              <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                {progressData.recentScores[progressData.recentScores.length - 1]}%
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">Latest Score</div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-3xl font-bold text-orange-600 mb-2">
+              {progressData.recentScores.length > 0 ? Math.max(...progressData.recentScores) : 0}
             </div>
+            <div className="text-gray-600">Best Score</div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Score Trend */}
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white/20 dark:border-gray-700/50">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-              <span className="text-3xl mr-3">📈</span>
-              Score Trend
-            </h2>
-            <div className="space-y-6">
-              {progressData.recentScores.map((score, index) => (
-                <div key={index} className="group">
-                  <div className="flex items-center mb-2">
-                    <div className="w-20 text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Test {index + 1}
-                    </div>
-                    <div className="flex-1 mx-4">
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-6 overflow-hidden">
-                        <div 
-                          className="bg-gradient-to-r from-blue-500 to-purple-600 h-6 rounded-full transition-all duration-1000 ease-out shadow-lg"
-                          style={{ width: `${score}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="w-16 text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      {score}%
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Module Performance */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Module Performance</h3>
+            <div className="space-y-4">
+              {progressData.modulePerformance.map((module) => (
+                <div key={module.module}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-gray-700">{module.module}</span>
+                    <span className="text-sm text-gray-600">{module.correct}/{module.total} ({module.percentage}%)</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full" 
+                      style={{ width: `${module.percentage}%` }}
+                    ></div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Strengths & Weaknesses */}
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white/20 dark:border-gray-700/50">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-              <span className="text-3xl mr-3">🎯</span>
-              Performance Analysis
-            </h2>
-            
-            <div className="mb-8">
-              <h3 className="font-bold text-green-700 dark:text-green-400 mb-4 flex items-center">
-                <span className="text-xl mr-2">💪</span>
-                Strong Areas
-              </h3>
+          {/* Recent Scores */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Test Scores</h3>
+            {progressData.recentScores.length > 0 ? (
               <div className="space-y-3">
+                {progressData.recentScores.map((score, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                    <span className="font-medium">Test {progressData.recentScores.length - index}</span>
+                    <span className={`font-bold ${score >= 75 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {score}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No test scores yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Strengths and Weaknesses */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-xl font-semibold text-green-600 mb-4">💪 Strong Areas</h3>
+            {progressData.strongAreas.length > 0 ? (
+              <div className="space-y-2">
                 {progressData.strongAreas.map((area, index) => (
-                  <div key={index} className="flex items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl border border-green-200 dark:border-green-800">
-                    <div className="w-3 h-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mr-3 shadow-lg"></div>
-                    <span className="text-gray-700 dark:text-gray-300 font-medium">{area}</span>
+                  <div key={index} className="flex items-center p-3 bg-green-50 rounded">
+                    <span className="text-green-600 mr-2">✓</span>
+                    <span className="font-medium text-green-800">{area}</span>
                   </div>
                 ))}
               </div>
-            </div>
-            
-            <div>
-              <h3 className="font-bold text-red-700 dark:text-red-400 mb-4 flex items-center">
-                <span className="text-xl mr-2">🎯</span>
-                Areas for Improvement
-              </h3>
-              <div className="space-y-3">
+            ) : (
+              <p className="text-gray-500">Complete more tests to identify strong areas</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-xl font-semibold text-red-600 mb-4">📚 Areas for Improvement</h3>
+            {progressData.weakAreas.length > 0 ? (
+              <div className="space-y-2">
                 {progressData.weakAreas.map((area, index) => (
-                  <div key={index} className="flex items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800">
-                    <div className="w-3 h-3 bg-gradient-to-r from-red-500 to-pink-500 rounded-full mr-3 shadow-lg"></div>
-                    <span className="text-gray-700 dark:text-gray-300 font-medium">{area}</span>
+                  <div key={index} className="flex items-center p-3 bg-red-50 rounded">
+                    <span className="text-red-600 mr-2">!</span>
+                    <span className="font-medium text-red-800">{area}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            ) : (
+              <p className="text-gray-500">Great job! No weak areas identified yet</p>
+            )}
           </div>
         </div>
 
-        {/* Recommendations */}
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-xl mb-12 border border-white/20 dark:border-gray-700/50">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-            <span className="text-3xl mr-3">💡</span>
-            Personalized Recommendations
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-2xl border border-blue-200 dark:border-blue-800">
-              <h3 className="font-bold text-blue-800 dark:text-blue-400 mb-3 flex items-center">
-                <span className="text-xl mr-2">🎯</span>
-                Focus Areas
-              </h3>
-              <p className="text-blue-700 dark:text-blue-300 text-sm leading-relaxed">
-                Spend more time practicing algebra and geometry problems. Consider reviewing fundamental concepts and working through step-by-step solutions.
-              </p>
-            </div>
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-2xl border border-green-200 dark:border-green-800">
-              <h3 className="font-bold text-green-800 dark:text-green-400 mb-3 flex items-center">
-                <span className="text-xl mr-2">🌟</span>
-                Keep It Up!
-              </h3>
-              <p className="text-green-700 dark:text-green-300 text-sm leading-relaxed">
-                Your writing and reading comprehension skills are strong. Maintain this level with regular practice and continue building vocabulary.
-              </p>
+        {/* Category Performance */}
+        {progressData.categoryPerformance.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Detailed Category Performance</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {progressData.categoryPerformance.map((category) => (
+                <div key={category.category} className="p-4 border rounded-lg">
+                  <div className="font-medium text-gray-900 mb-2">{category.category}</div>
+                  <div className="text-sm text-gray-600 mb-2">
+                    {category.correct}/{category.total} correct ({category.percentage}%)
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${
+                        category.percentage >= 75 ? 'bg-green-500' : 
+                        category.percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${category.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Action Buttons */}
-        <div className="text-center space-y-4">
-          <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <button
-              onClick={() => router.push('/practice-test')}
-              className="group relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-purple-500/25"
-            >
-              <span className="relative z-10 flex items-center justify-center">
-                🚀 Take Another Test
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition-opacity"></div>
-            </button>
-            
-            <button
-              onClick={() => router.push('/')}
-              className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl hover:bg-white dark:hover:bg-gray-800 text-gray-900 dark:text-white px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl border border-gray-200/50 dark:border-gray-700/50"
-            >
-              <span className="relative z-10 flex items-center justify-center">
-                🏠 Back to Home
-              </span>
-            </button>
+        {/* Test History */}
+        {progressData.testHistory.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Test History</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Date</th>
+                    <th className="text-left py-2">Module</th>
+                    <th className="text-left py-2">Score</th>
+                    <th className="text-left py-2">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {progressData.testHistory.map((test) => (
+                    <tr key={test.id} className="border-b">
+                      <td className="py-2">{new Date(test.completedAt).toLocaleDateString()}</td>
+                      <td className="py-2">{test.moduleType}</td>
+                      <td className="py-2">
+                        <span className={`font-medium ${
+                          test.score >= 75 ? 'text-green-600' : 
+                          test.score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {test.score}%
+                        </span>
+                      </td>
+                      <td className="py-2">{Math.round(test.timeSpent / 60)}m</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          
-          <p className="text-gray-500 dark:text-gray-400 mt-4">
-            Keep practicing to improve your SAT scores!
-          </p>
-        </div>
+        )}
+
+        {/* Action Button */}
+        <div className="text-center mt-8">
+          <button
+            onClick={() => router.push('/practice-test')}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-medium"
+          >
+            Take Another Practice Test
+          </button>
+          </div>
       </div>
     </div>
   )

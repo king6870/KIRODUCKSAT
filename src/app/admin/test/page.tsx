@@ -7,7 +7,6 @@ import { useTestState } from '@/hooks/useTestState'
 import { MODULE_CONFIGS } from '@/data/moduleConfigs'
 import MathRenderer from '@/components/MathRenderer'
 import ChartRenderer from '@/components/ChartRenderer'
-import ChartRenderer from '@/components/ChartRenderer'
 
 export default function AdminTest() {
   const { data: session } = useSession()

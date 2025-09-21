@@ -2,6 +2,8 @@
 
 import { TestResult } from '@/types/test'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { useEffect, useState } from 'react'
 import { generateDetailedAnalytics, getScoreLevel } from '@/utils/satScoring'
 
 interface TestAnalyticsProps {
@@ -10,6 +12,35 @@ interface TestAnalyticsProps {
 
 export default function TestAnalytics({ testResults }: TestAnalyticsProps) {
   const router = useRouter()
+  const { data: session } = useSession()
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (session && !saved) {
+      saveTestResults()
+    }
+  }, [session, saved])
+
+  const saveTestResults = async () => {
+    try {
+      const response = await fetch('/api/test-results', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          testResults,
+          userId: session?.user?.email
+        })
+      })
+
+      if (response.ok) {
+        setSaved(true)
+      }
+    } catch (error) {
+      console.error('Failed to save test results:', error)
+    }
+  }
 
   try {
     // Generate detailed SAT analytics
@@ -137,6 +168,12 @@ export default function TestAnalytics({ testResults }: TestAnalyticsProps) {
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:shadow-lg transition-all"
               >
                 Take Another Test
+              </button>
+              <button
+                onClick={() => router.push('/progress')}
+                className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:shadow-lg transition-all"
+              >
+                View Progress
               </button>
               <button
                 onClick={() => router.push('/')}

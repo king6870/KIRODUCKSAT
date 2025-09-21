@@ -11,7 +11,7 @@ async function generateImagesForExistingQuestions() {
     const questionsNeedingImages = await prisma.question.findMany({
       where: {
         AND: [
-          { chartData: { not: null } },
+          { chartData: { not: undefined } },
           { imageUrl: null },
           { moduleType: 'math' }
         ]

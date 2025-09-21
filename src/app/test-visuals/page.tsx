@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react'
 import ComprehensiveQuestionDisplay from '@/components/ComprehensiveQuestionDisplay'
 
 export default function TestVisuals() {
-  const [mathQuestions, setMathQuestions] = useState([])
-  const [readingQuestions, setReadingQuestions] = useState([])
+  const [mathQuestions, setMathQuestions] = useState<any[]>([])
+  const [readingQuestions, setReadingQuestions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function TestVisuals() {
               <h3 className="font-semibold text-blue-600 mb-2">Math Questions</h3>
               <p>Total: {mathQuestions.length}</p>
               <p>With Charts: {mathQuestions.filter(q => q.chartData).length}</p>
-              <p>Chart Types: {[...new Set(mathQuestions.filter(q => q.chartData).map(q => q.chartData?.graphType))].join(', ')}</p>
+              <p>Chart Types: {Array.from(new Set(mathQuestions.filter(q => q.chartData).map(q => q.chartData?.graphType))).join(', ')}</p>
             </div>
             <div>
               <h3 className="font-semibold text-green-600 mb-2">Reading Questions</h3>

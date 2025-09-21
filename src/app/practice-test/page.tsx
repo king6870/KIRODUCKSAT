@@ -13,22 +13,30 @@ import ChartRenderer from '@/components/ChartRenderer'
 export default function PracticeTest() {
   const { data: session } = useSession()
   const router = useRouter()
+  
   const {
+    hasStarted,
     currentModule,
     currentQuestion,
-    currentSelectedAnswer,
-    testResults,
     isTransitioning,
     isComplete,
-    hasStarted,
+    testResults,
+    isBreakTime,
+    breakTimeRemaining,
+    moduleStarted,
     startTest,
     startModule,
     selectAnswer,
     nextQuestion,
     previousQuestion,
-    submitModule,
-    testState
-  } = useTestState(session?.user?.email || 'anonymous')
+    goToQuestion,
+    selectedAnswer,
+    progress,
+    questionsAnswered,
+    timeRemaining,
+    currentQuestionIndex,
+    currentModuleQuestions
+  } = useTestState(session?.user?.email || '')
 
   useEffect(() => {
     if (!session) {
@@ -66,8 +74,32 @@ export default function PracticeTest() {
     return <TestLauncher onStartTest={startTest} />
   }
 
+  // Break time screen
+  if (isBreakTime) {
+    const minutes = Math.floor(breakTimeRemaining / 60)
+    const seconds = breakTimeRemaining % 60
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-2xl p-12 text-center max-w-md">
+          <div className="text-6xl mb-6">☕</div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Break Time</h2>
+          <p className="text-gray-600 mb-6">
+            Take a 10-minute break before starting the Math section
+          </p>
+          <div className="text-4xl font-bold text-blue-600 mb-4">
+            {minutes}:{seconds.toString().padStart(2, '0')}
+          </div>
+          <p className="text-sm text-gray-500">
+            The Math section will start automatically when the break ends
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   // Module start screen (before starting each module)
-  if (currentModule && hasStarted && !testState.moduleStarted && !isTransitioning) {
+  if (currentModule && hasStarted && !moduleStarted && !isTransitioning) {
     return (
       <ModuleStart
         module={currentModule}

@@ -738,7 +738,7 @@ Respond in this JSON format:
                 graphType: question.graphType,
                 type: question.graphType?.includes('coordinate') ? 'scatter' : 
                       question.graphType?.includes('statistics') ? 'bar' : 'line'
-              } : null,
+              } : undefined,
               timeEstimate: question.points * 30,
               source: 'AI Generated (GPT-5 + Grok)',
               tags: [question.difficulty, question.category, question.subtopic],
@@ -874,6 +874,35 @@ Return ONLY a valid JSON array with this exact format:
   private selectRandomSubtopics(subtopics: any[], count: number): any[] {
     const shuffled = [...subtopics].sort(() => 0.5 - Math.random())
     return shuffled.slice(0, count)
+  }
+
+  async storeQuestion(question: any): Promise<void> {
+    try {
+      await this.prisma.question.create({
+        data: {
+          moduleType: question.moduleType,
+          difficulty: question.difficulty,
+          category: question.category,
+          subtopic: question.subtopic || question.category,
+          question: question.question,
+          passage: question.passage || null,
+          options: question.options,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          wrongAnswerExplanations: question.wrongAnswerExplanations || null,
+          imageUrl: question.imageUrl || null,
+          imageAlt: question.imageAlt || null,
+          chartData: question.chartData || null,
+          timeEstimate: question.timeEstimate || 90,
+          source: question.source || 'ai-generated',
+          tags: question.tags || [],
+          isActive: true
+        }
+      })
+    } catch (error) {
+      console.error('Error storing question:', error)
+      throw error
+    }
   }
 }
 

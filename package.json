@@ -26,7 +26,13 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "test:ai-questions": "tsx scripts/test-ai-generation.ts",
-    "view:questions": "tsx scripts/view-questions.ts"
+    "view:questions": "tsx scripts/view-questions.ts",
+    "seed:test-data": "tsx scripts/seed-test-data.ts",
+    "generate:graph-math": "tsx scripts/generate-graph-math-questions.ts",
+    "seed:graph-math": "tsx scripts/seed-graph-math-questions.ts",
+    "seed:comprehensive": "tsx scripts/seed-comprehensive-questions.ts",
+    "fix:graphs": "tsx scripts/fix-graph-questions.ts",
+    "create:text-math": "tsx scripts/create-text-only-math.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

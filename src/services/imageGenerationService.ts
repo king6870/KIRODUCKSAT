@@ -13,7 +13,7 @@ export interface ChartConfig {
 
 export class ImageGenerationService {
   private readonly DALLE_ENDPOINT = 'https://ai-manojwin82958ai594424696620.openai.azure.com/openai/deployments/dall-e-3/images/generations?api-version=2024-02-01'
-  private readonly API_KEY = 'FhyeuwcfKGaNEhoq3U7VOKg4s0sfobVW7fNIdDA7EaI05dyIXQqMJQQJ99BBACHYHv6XJ3w3AAAAACOGsrpa'
+  private readonly API_KEY = process.env.AZURE_OPENAI_API_KEY || ''
   private readonly IMAGES_DIR = join(process.cwd(), 'public', 'generated-images')
 
   constructor() {
